@@ -15,7 +15,7 @@
 
 </div>
 
-这几个 Skill 都是在自己日常投流和选品项目里跑通了一段时间，确实省事，才拿出来开源的。覆盖跨境电商从 **商品选品 → 竞品素材分析 → 广告投放策略** 的完整链路。
+覆盖跨境电商从 **商品选品 → 竞品素材分析 → 广告投放策略** 的完整链路。
 
 - **Skills** — Agent 能直接加载的结构化指令集，遵循 [Agent Skills](https://agentskills.io) 开放标准。Claude Code、Codex 都能装
 
@@ -119,7 +119,7 @@ pip install openpyxl Pillow requests
 
 > *"竞品的主图、卖点、风格，批量扒下来放到飞书表格里慢慢看。"*
 
-轻量级产品创意素材抓取和分析工具。从 App Store、Google Play、Shopify/独立站产品页批量提取商品名、价格、图片，再用 AI 分析每张图片的卖点、风格、布局、场景，最终输出飞书多维表格或 CSV。
+轻量级产品创意素材抓取和分析工具。从 Shopify/独立站产品页批量提取商品名、价格、图片，再用 AI 分析每张图片的卖点、风格、布局、场景，最终输出飞书多维表格或 CSV。
 
 **核心能力**
 
@@ -133,7 +133,6 @@ pip install openpyxl Pillow requests
 
 ```
 帮我把这几个产品链接抓一下素材：https://...
-分析一下这个 App Store 应用的截图卖点
 帮我把竞品的产品图和卖点扒到飞书表格里
 ```
 
@@ -178,7 +177,7 @@ export GEMINI_API_KEY="your-key"
 
 > *"拿到一个产品链接，不知道投 Meta 还是 TikTok、受众怎么选、素材怎么做——让这个 Skill 给你出一套完整的投放策略包。"*
 
-平台无关的 Meta/TikTok 广告投放工作流。输入一个产品 URL 或产品简介，自动产出：投放策略、受众定位（通用字段 + motata CLI 可消费字段）、广告结构、文案、图片 prompt、验证报告。**不实际创建广告，不花预算**——这是一个分析和准备工具。
+跨Meta/TikTok 广告投放工作流。输入一个产品 URL 或产品简介，自动产出：投放策略、受众定位（通用字段 + motata CLI 可消费字段）、广告结构、文案、图片 prompt、验证报告。**不实际创建广告，不花预算**——这是一个分析和准备工具。
 
 **核心能力**
 
@@ -187,7 +186,6 @@ export GEMINI_API_KEY="your-key"
 - **Campaign 结构生成**：Meta campaign/adset/ad 和 TikTok campaign/adgroup/ad 完整层级
 - **素材策略**：每个 ad 配创意角度、文案、CTA、落地页、图片 prompt
 - **验证报告**：预算、受众、素材对齐自动检查
-- **Google 除外**：默认只覆盖 Meta + TikTok
 
 **怎么触发**
 
@@ -200,7 +198,7 @@ export GEMINI_API_KEY="your-key"
 **工作流程**
 
 1. **分析产品** — 读产品链接/简介，提取类目、卖点、受众假设
-2. **解析受众字段** — 通过 motata 查询 Meta/TikTok 真实定位数据（需要 token）
+2. **解析受众字段** — 通过 motata 查询 Meta/TikTok 真实定位数据（依赖motata skill）
 3. **推荐投放方案** — 国家、平台预算分配、素材测试结构（需用户确认）
 4. **生成 Campaign 结构** — 完整的 campaign/adset/ad 或 campaign/adgroup/ad
 5. **验证输出** — 检查预算对齐、受众覆盖、素材数量一致性
