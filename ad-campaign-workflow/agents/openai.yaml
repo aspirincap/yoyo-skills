@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ad Campaign Workflow"
+  short_description: "Plan Meta/TikTok ads with dual targeting."
+  default_prompt: "Use $ad-campaign-workflow to analyze a product URL and produce Meta/TikTok campaign structures with generic and motata targeting fields."
+policy:
+  allow_implicit_invocation: true

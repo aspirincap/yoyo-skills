@@ -1,0 +1,6 @@
+interface:
+  display_name: "Product Creative Scraper"
+  short_description: "Extract product names, prices, and image URLs."
+  default_prompt: "Use $product-creative-scraper to extract product creative assets from these URLs and summarize the image opportunities."
+policy:
+  allow_implicit_invocation: true

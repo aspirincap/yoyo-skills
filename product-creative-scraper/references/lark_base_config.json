@@ -1,0 +1,21 @@
+{
+  "configured": false,
+  "base_name": "",
+  "base_token": "",
+  "base_url": "",
+  "time_zone": "Asia/Shanghai",
+  "init_mode": "",
+  "template_base_token": null,
+  "product_table": {
+    "name": "商品表",
+    "table_id": "",
+    "view_id": "",
+    "preview_field_id": ""
+  },
+  "asset_table": {
+    "name": "图片表",
+    "table_id": "",
+    "view_id": "",
+    "preview_field_id": ""
+  }
+}

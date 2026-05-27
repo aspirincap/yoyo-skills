@@ -1,0 +1,4 @@
+interface:
+  display_name: "Yiwugo Product Sourcing"
+  short_description: "Yiwugo sourcing, product picks, and suppliers"
+  default_prompt: "Use $yiwugo-product-sourcing to find Yiwugo product links, wholesale suppliers, and sourcing risks for a cross-border ecommerce brief."

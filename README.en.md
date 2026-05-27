@@ -1,0 +1,257 @@
+<div align="center">
+
+[中文](./README.md) · **English**
+
+# 🧰 Yoyo Skills
+
+#### AI skills for cross-border ecommerce ads & sourcing — all open-sourced here
+
+[![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
+[![Skills](https://img.shields.io/badge/Skills-3-10B981?style=for-the-badge)](#-skills)
+[![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
+
+![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
+![Codex](https://img.shields.io/badge/Codex-Skill-10B981?style=flat-square&logo=openai&logoColor=white)
+
+</div>
+
+Each skill ran in real ad ops and sourcing projects long enough to prove it actually saves time before I bothered open-sourcing it. Together they cover the full cross-border ecommerce pipeline: **product sourcing → competitor creative analysis → ad campaign strategy**.
+
+- **Skills** — Structured instruction sets that agents load directly. Follows the [Agent Skills](https://agentskills.io) open standard. Works with Claude Code and Codex
+
+---
+
+## 📋 Index
+
+### Skills
+
+| Name | One-liner |
+|---|---|
+| 🛒 [**yiwugo-product-sourcing**](#-yiwugo-product-sourcing) | API-first Yiwugo sourcing — search keywords, get product cards with prices/MOQ, and export Excel/HTML reports, no browser needed |
+| 🔍 [**product-creative-scraper**](#-product-creative-scraper) | Batch scrape product images and selling points from URLs, App Store, Google Play, Shopify stores, then analyze with AI and sync to Feishu Base |
+| 🎯 [**ad-campaign-workflow**](#-ad-campaign-workflow) | Turn a product URL into a complete Meta/TikTok ad strategy package — audiences, creatives, copy, and validation reports |
+
+---
+
+## 📦 Install
+
+In any agent that supports Skills (Claude Code, Codex), just say:
+
+```
+Install this skill: https://github.com/aspirincap/yoyo-skills/tree/main/<skill-name>
+```
+
+Replace `<skill-name>` with the one you want — e.g. `yiwugo-product-sourcing`, `product-creative-scraper`, `ad-campaign-workflow`. The agent will clone it into the right directory for you.
+
+Or clone manually:
+
+```bash
+# Claude Code
+git clone https://github.com/aspirincap/yoyo-skills.git ~/.claude/skills/
+
+# Codex
+git clone https://github.com/aspirincap/yoyo-skills.git ~/.codex/skills/
+```
+
+---
+
+## ✨ Skills
+
+<a id="-skills"></a>
+
+<table>
+<tr><td>
+
+### 🛒 yiwugo-product-sourcing
+
+> *"Scrolling through hundreds of Yiwugo pages to find suppliers is painful — let AI search, filter, and report for you."*
+
+API-first Yiwugo (Yiwu wholesale market) product sourcing skill. The full pipeline — keyword search → AI recommendations → product card fetching → scoring & risk screening → Excel/HTML reports — runs **without opening a browser**.
+
+**Key capabilities**
+
+- **AI semantic search**: Natural language sourcing queries in Chinese, auto-matched by Yiwugo AI
+- **Batch product card fetching**: No login required — extracts product IDs and fetches price/MOQ/shop info via API
+- **Auto scoring & ranking**: Priority A/B/C/Avoid with composite score from price, MOQ, and risk flags
+- **Cross-border risk screening**: Auto-flags battery, food-contact, children's products, and brand/IP risks
+- **Triple-format reports**: Terminal Markdown preview + Excel (with embedded preview images) + HTML (with product images)
+
+**How to trigger** (Chinese — the underlying platform is Chinese)
+
+```
+帮我找义乌购上的古风发簪货源，采购价要低
+用义乌购选品：半导体散热风扇，适合跨境电商
+帮我看看汉服发饰在义乌购上有什么供应商
+```
+
+**Usage examples**
+
+```bash
+# Single keyword search
+python3 scripts/yiwugo_ai_api.py --keyword '古风发簪' --constraints '采购价低' --max-products 10 --no-answer
+
+# Multi-keyword parallel search
+python3 scripts/yiwugo_ai_api.py --keyword '半导体风扇' --keyword '制冷小风扇' --keyword '手持风扇' --sort score --max-products 15
+
+# JSON output
+python3 scripts/yiwugo_ai_api.py --keyword '汉服发饰' --constraints '低MOQ、不带电' --json
+```
+
+**Dependencies**
+
+```bash
+pip install openpyxl Pillow requests
+```
+
+**Platforms supported**: Amazon · TikTok Shop · Shopify · eBay · Shopee/Lazada · Temu
+
+**🌐 Cross-platform**: Claude Code · Codex
+
+→ [SKILL.md](./yiwugo-product-sourcing/SKILL.md) · [README](./yiwugo-product-sourcing/README.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 🔍 product-creative-scraper
+
+> *"Competitor product images, selling points, and visual styles — batch scrape them, AI-analyze them, sync to Feishu Base for team review."*
+
+Lightweight product creative scraping and analysis tool. Extracts product names, prices, and images from App Store, Google Play, Shopify/ecommerce product pages, then uses AI to analyze each image's selling points, style, layout, and scene. Outputs to Feishu Base or CSV.
+
+**Key capabilities**
+
+- **Multi-source scraping**: App Store, Google Play, Shopify stores, generic ecommerce product pages
+- **Batch processing**: Single URL or multi-URL lists (CSV/TXT)
+- **AI creative analysis**: OCR text extraction + VLM analysis for selling points, style, layout, scene type
+- **Feishu Base output**: Two-table model (Products + Images) for team collaboration
+- **Lightweight design**: No database, vector search, or Cloudflare infrastructure needed
+
+**How to trigger**
+
+```
+帮我把这几个产品链接抓一下素材：https://...
+分析一下这个 App Store 应用的截图卖点
+帮我把竞品的产品图和卖点扒到飞书表格里
+```
+
+**Usage examples**
+
+```bash
+# Single URL
+python3 scripts/run_product_scrape.py "https://apps.apple.com/app/xxx"
+
+# Multiple URLs
+python3 scripts/run_product_scrape.py --url-file urls.txt --format json
+
+# AI analysis of scraped images
+python3 scripts/analyze_assets.py --scrape-json scrape.json --format json
+
+# Initialize Feishu Base
+python3 scripts/init_lark_base.py --create --name "Product Creative Scraper MVP"
+
+# Sync to Feishu
+python3 scripts/sync_lark_base.py --scrape-json scrape.json --analysis-json analysis.json --project "Competitor Analysis"
+```
+
+**Dependencies**
+
+```bash
+pip install requests Pillow openpyxl
+# For AI analysis
+export GEMINI_API_KEY="your-key"
+```
+
+**🌐 Cross-platform**: Claude Code · Codex
+
+→ [SKILL.md](./product-creative-scraper/SKILL.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 🎯 ad-campaign-workflow
+
+> *"Got a product URL but don't know whether to run Meta or TikTok, what audiences to target, or what creatives to make? This skill generates the full strategy package."*
+
+Platform-independent Meta and TikTok advertising workflow planner. Input a product URL or brief, get: strategy, audience targeting (both generic fields and motata CLI-consumable fields), campaign structures, ad copy, image prompts, and validation reports. **Does not create live ads or spend budget** — this is an analysis and preparation tool.
+
+**Key capabilities**
+
+- **Product analysis**: Auto-extracts selling points, audience hypotheses, use cases, and risk flags
+- **Dual-platform audience targeting**: Generic targeting fields + motata platform-specific fields for both Meta and TikTok
+- **Campaign structure generation**: Full Meta campaign/adset/ad and TikTok campaign/adgroup/ad hierarchies
+- **Creative strategy**: Each ad gets angle, copy, CTA, landing URL, and image prompt
+- **Validation report**: Auto-checks budget alignment, audience coverage, and creative parity
+- **Google excluded**: Covers Meta + TikTok by default
+
+**How to trigger**
+
+```
+帮我分析这个产品，出 Meta 和 TikTok 的投放方案：https://...
+给这个产品做一套广告投放策略
+帮我规划一下这个品的 Meta 受众定位
+```
+
+**Workflow**
+
+1. **Analyze the product** — Read URL/brief, extract category, selling points, audience hypotheses
+2. **Resolve targeting fields** — Query real Meta/TikTok targeting data via motata (requires tokens)
+3. **Recommend strategy** — Countries, platform budget split, creative testing structure (user confirms)
+4. **Generate campaign structures** — Full campaign/adset/ad or campaign/adgroup/ad
+5. **Validate** — Check budget alignment, audience coverage, creative count parity
+
+**Output sections**
+
+- `strategy_brief` — Product, audience, channel, country, and budget rationale
+- `targeting_fields_generic` — Generic targeting field bank
+- `targeting_fields_motata` — motata-ready field bank with provenance
+- `campaign_structure` — Meta and/or TikTok campaign hierarchy
+- `creative_matrix` — Ad angles, copy, hooks, CTA, and audience mapping
+- `image_prompt_pack` — One image prompt per ad
+- `validation_report` — Checks passed, missing lookups, risk warnings, assumptions
+
+**Safety rules**
+
+- Read-only motata — never creates ads or spends budget
+- All unresolved platform IDs explicitly marked — no fabricated IDs
+- Campaign/adset/ad default status is draft or paused
+
+**🌐 Cross-platform**: Claude Code · Codex
+
+→ [SKILL.md](./ad-campaign-workflow/SKILL.md)
+
+</td></tr>
+</table>
+
+---
+
+## 🔗 Sourcing → Creative → Campaign Pipeline
+
+These three skills chain together to cover the full cross-border ecommerce workflow:
+
+```
+yiwugo-product-sourcing     →  Find suppliers, get prices/MOQ/vendors
+        ↓
+product-creative-scraper    →  Analyze competitor creatives, extract selling points & styles
+        ↓
+ad-campaign-workflow        →  Generate complete Meta/TikTok ad strategy package
+```
+
+---
+
+## 🌟 About
+
+A collection of practical skills accumulated from real cross-border ecommerce ad ops and product sourcing work. If they help you, a ⭐ is appreciated. Questions or suggestions welcome in Issues.
+
+---
+
+<div align="center">
+
+[MIT License](./LICENSE) · Free to use, modify, and redistribute
+
+</div>
