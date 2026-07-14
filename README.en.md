@@ -7,7 +7,7 @@
 #### AI skills for cross-border ecommerce ads & sourcing — all open-sourced here
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-6-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-7-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -15,7 +15,7 @@
 
 </div>
 
-Each skill is designed around practical ecommerce work. Together they cover: **product sourcing → competitor analysis → product image standardization → ad strategy → storyboards → UGC video**.
+Each skill is designed around practical ecommerce work. Together they cover: **product sourcing → competitor analysis → social trend research → product image standardization → ad strategy → storyboards → UGC video**.
 
 - **Skills** — Structured instruction sets that agents load directly. Follows the [Agent Skills](https://agentskills.io) open standard. Works with Claude Code and Codex
 
@@ -29,6 +29,7 @@ Each skill is designed around practical ecommerce work. Together they cover: **p
 |---|---|
 | 🛒 [**yiwugo-product-sourcing**](#-yiwugo-product-sourcing) | API-first Yiwugo sourcing — search keywords, get product cards with prices/MOQ, and export Excel/HTML reports, no browser needed |
 | 🔍 [**product-creative-scraper**](#-product-creative-scraper) | Batch scrape product images and selling points from URLs, App Store, Google Play, Shopify stores, then analyze with AI and sync to Feishu Base |
+| 📈 [**trend-to-creative-brief**](#-trend-to-creative-brief) | Directly research dated public TikTok/Instagram evidence and turn reusable mechanics into original ad tests |
 | 📦 [**standard-product-image**](#-standard-product-image) | Turn real product photos into faithful, marketplace-ready white-background images or editing prompts |
 | 🎯 [**ad-campaign-workflow**](#-ad-campaign-workflow) | Turn a product URL into a complete Meta/TikTok ad strategy package — audiences, creatives, copy, and validation reports |
 | 🎬 [**ad-storyboard-seedance**](#-ad-storyboard-seedance) | Generate product-faithful storyboards, require approval, then create vertical ad clips through a configurable Seedance provider |
@@ -111,6 +112,32 @@ pip install openpyxl Pillow requests
 **🌐 Cross-platform**: Claude Code · Codex
 
 → [SKILL.md](./yiwugo-product-sourcing/SKILL.md) · [README](./yiwugo-product-sourcing/README.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 📈 trend-to-creative-brief
+
+Directly research public TikTok and Instagram posts for a specified date window and market, retain query, source date, engagement, market confidence, operation path, and billing metadata, then rank reusable mechanics by freshness, brand fit, and risk before producing original creative tests.
+
+**Key capabilities**
+
+- Direct public TikTok/Instagram operation discovery and bounded retrieval
+- Auditable URLs, dates, engagement, queries, request IDs, and credits charged
+- TikTok region filtering and explicit Instagram market uncertainty
+- Original adaptations that preserve mechanics without copying protected expression
+- Test questions, metrics, risks, review dates, and expiry
+
+**Hard dependency**
+
+Live retrieval requires [UnifAPI MCP](https://unifapi.com/mcp) at `https://mcp.unifapi.com`. Official setup uses read-only OAuth, requires no API key pasted into the skill, and bills by returned record. Without the MCP connection, the skill can only process evidence the user already supplied.
+
+**🌐 Cross-platform**: Claude Code · Codex with MCP support
+
+→ [SKILL.md](./trend-to-creative-brief/SKILL.md) · [README](./trend-to-creative-brief/README.md) · [Install UnifAPI MCP](https://unifapi.com/mcp)
 
 </td></tr>
 </table>

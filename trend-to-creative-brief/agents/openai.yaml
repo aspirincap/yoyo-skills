@@ -1,0 +1,4 @@
+interface:
+  display_name: "Trend to Creative Brief"
+  short_description: "Research TikTok/Instagram trends into creative tests"
+  default_prompt: "Use $trend-to-creative-brief to directly research bounded public TikTok and Instagram evidence for my market and date window, preserve query, billing, source dates and market confidence, then rank reusable mechanics and create original platform-specific creative angles, tests, risks and expiry."

@@ -7,7 +7,7 @@
 #### 跨境电商广告投放 & 选品常用 AI 技能集，都开源在这里
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-6-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-7-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -15,7 +15,7 @@
 
 </div>
 
-覆盖跨境电商从 **商品选品 → 竞品素材分析 → 商品图标准化 → 广告策略 → 故事板 → UGC 视频** 的完整链路。
+覆盖跨境电商从 **商品选品 → 竞品素材分析 → 社交趋势研究 → 商品图标准化 → 广告策略 → 故事板 → UGC 视频** 的完整链路。
 
 - **Skills** — Agent 能直接加载的结构化指令集，遵循 [Agent Skills](https://agentskills.io) 开放标准。Claude Code、Codex 都能装
 
@@ -29,6 +29,7 @@
 |---|---|
 | 🛒 [**yiwugo-product-sourcing（义乌购选品）**](#-yiwugo-product-sourcing义乌购选品) | API-first 义乌购选品，不打开浏览器就能完成从关键词搜索到货源短名单的全流程 |
 | 🔍 [**product-creative-scraper（产品素材抓取分析）**](#-product-creative-scraper产品素材抓取分析) | 从产品链接批量抓取商品图和卖点，输出飞书多维表格 |
+| 📈 [**trend-to-creative-brief（趋势转广告创意）**](#-trend-to-creative-brief趋势转广告创意) | 直接检索近期公共 TikTok/Instagram 帖子，把有日期、有来源的趋势证据转成原创广告测试方案 |
 | 📦 [**standard-product-image（标准商品图）**](#-standard-product-image标准商品图) | 把实拍产品图整理成结构真实、平台友好的电商白底商品图或提示词 |
 | 🎯 [**ad-campaign-workflow（广告投放工作流）**](#-ad-campaign-workflow广告投放工作流) | 从产品 URL 到 Meta/TikTok 完整投放策略包：受众、素材、文案、出价一把出 |
 | 🎬 [**ad-storyboard-seedance（广告故事板转视频）**](#-ad-storyboard-seedance广告故事板转视频) | 先生成故事板并人工确认，再通过可配置的 Seedance 服务生成竖版广告视频 |
@@ -111,6 +112,42 @@ pip install openpyxl Pillow requests
 **🌐 跨平台**：Claude Code · Codex
 
 → [SKILL.md](./yiwugo-product-sourcing/SKILL.md) · [README](./yiwugo-product-sourcing/README.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 📈 trend-to-creative-brief（趋势转广告创意）
+
+> *"看到平台热点不等于知道品牌该不该跟——先验证证据，再把机制改成可测试的原创广告。"*
+
+直接检索指定日期与市场范围内的公共 TikTok/Instagram 帖子，保留查询、来源日期、互动量、地域置信度和计费信息，再按新鲜度、品牌适配和风险筛选趋势，输出创意角度与测试矩阵。
+
+**核心能力**
+
+- **直接公共数据检索**：动态发现并调用 TikTok/Instagram 搜索操作
+- **证据可审计**：保留帖子 URL、发布日期、互动量、query、operation path 与 credits charged
+- **市场置信度**：TikTok 按 `region` 过滤；Instagram 缺少国家字段时明确标记未验证
+- **原创创意改编**：保留趋势机制，不复制创作者原话、音乐、角色或画面
+- **测试与过期管理**：输出学习问题、指标、风险、复查日期和趋势到期时间
+
+**强依赖**
+
+实时检索必须连接 [UnifAPI MCP](https://unifapi.com/zh/mcp)，Server 为 `https://mcp.unifapi.com`。官方使用 OAuth、只读、无需向 Skill 粘贴 API Key，并按返回记录计费。未连接时只能处理用户已经提供的证据。
+
+**怎么触发**
+
+```text
+研究最近 14 天美国 TikTok 和 Instagram 上的夜跑装备趋势，转成广告创意 brief
+查过去 7 天 TikTok 的 summer running essentials，所有结论注明来源和日期
+我已经有三个 Reels 链接，帮我判断 pursue、adapt、watch 还是 skip
+```
+
+**🌐 跨平台**：Claude Code · Codex（需支持 MCP）
+
+→ [SKILL.md](./trend-to-creative-brief/SKILL.md) · [README](./trend-to-creative-brief/README.md) · [UnifAPI MCP 安装](https://unifapi.com/zh/mcp)
 
 </td></tr>
 </table>

@@ -1,0 +1,41 @@
+{
+  "skill_name": "trend-to-creative-brief",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我整理了过去 7 天三个 Instagram Reels 格式，给办公室保温杯品牌筛选最值得跟的两个，并输出原创 hook、产品证据、测试矩阵、来源和过期时间。",
+      "expected_output": "Separates evidence from inference, ranks trends by freshness and brand fit, creates original adaptations and includes dates, URLs, expiry and learning questions.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "这个 TikTok 热梗只有一篇半年前的博客提到，没有原生帖子。能不能直接说它最近爆了并给我的护肤品牌拍同款？",
+      "expected_output": "Refuses to call it current, marks evidence as weak/stale, avoids copying, and recommends watch/skip or fresh research.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "把一个 Reels 人格展示趋势改成 TikTok 广告和轮播两个版本。产品是跑步腰包，必须突出真实容量和夜跑反光细节，不要预测 CTR。",
+      "expected_output": "Preserves the mechanic while creating platform-specific original expression, anchors claims in visible proof and defines test metrics without fabricated performance.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "直接检索公共 TikTok/Instagram 数据，研究最近 14 天美国跑步装备趋势，再为跑步腰包生成品牌创意 brief；保留查询、接口、计费、来源日期、互动证据和地域不确定性，不要调用其他研究 skill。",
+      "expected_output": "Uses the public-data catalog directly with bounded queries, normalizes results, treats TikTok region and Instagram market uncertainty correctly, preserves billing/provenance, groups independent creative mechanics, and produces an auditable creative brief without another research-skill dependency.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "查过去 7 天美国 Instagram 上的护肤 shelfie 趋势。如果接口结果没有国家字段，不要根据英文或 #usa 猜地域；告诉我覆盖缺口并给可验证的下一步。",
+      "expected_output": "Queries Instagram once with at most one refinement, filters dates, marks US market as unverified without explicit country evidence, reports result and billing coverage, and avoids claiming a verified US trend.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "帮我查最近一周 TikTok 的美妆趋势，但当前环境没有 UnifAPI MCP。",
+      "expected_output": "Stops live discovery, identifies the missing UnifAPI MCP dependency, links to https://unifapi.com/zh/mcp, explains OAuth setup, and does not silently substitute browser scraping or another research skill.",
+      "files": []
+    }
+  ]
+}
