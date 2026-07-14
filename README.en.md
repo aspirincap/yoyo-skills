@@ -7,7 +7,7 @@
 #### AI skills for cross-border ecommerce ads & sourcing — all open-sourced here
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-3-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-6-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -15,7 +15,7 @@
 
 </div>
 
-Each skill ran in real ad ops and sourcing projects long enough to prove it actually saves time before I bothered open-sourcing it. Together they cover the full cross-border ecommerce pipeline: **product sourcing → competitor creative analysis → ad campaign strategy**.
+Each skill is designed around practical ecommerce work. Together they cover: **product sourcing → competitor analysis → product image standardization → ad strategy → storyboards → UGC video**.
 
 - **Skills** — Structured instruction sets that agents load directly. Follows the [Agent Skills](https://agentskills.io) open standard. Works with Claude Code and Codex
 
@@ -29,7 +29,10 @@ Each skill ran in real ad ops and sourcing projects long enough to prove it actu
 |---|---|
 | 🛒 [**yiwugo-product-sourcing**](#-yiwugo-product-sourcing) | API-first Yiwugo sourcing — search keywords, get product cards with prices/MOQ, and export Excel/HTML reports, no browser needed |
 | 🔍 [**product-creative-scraper**](#-product-creative-scraper) | Batch scrape product images and selling points from URLs, App Store, Google Play, Shopify stores, then analyze with AI and sync to Feishu Base |
+| 📦 [**standard-product-image**](#-standard-product-image) | Turn real product photos into faithful, marketplace-ready white-background images or editing prompts |
 | 🎯 [**ad-campaign-workflow**](#-ad-campaign-workflow) | Turn a product URL into a complete Meta/TikTok ad strategy package — audiences, creatives, copy, and validation reports |
+| 🎬 [**ad-storyboard-seedance**](#-ad-storyboard-seedance) | Generate product-faithful storyboards, require approval, then create vertical ad clips through a configurable Seedance provider |
+| 📱 [**product-to-ugc-video**](#-product-to-ugc-video) | Build a consistent creator, adjacent keyframes, recoverable segments, and merge metadata from a product image |
 
 ---
 
@@ -41,7 +44,7 @@ In any agent that supports Skills (Claude Code, Codex), just say:
 Install this skill: https://github.com/aspirincap/yoyo-skills/tree/main/<skill-name>
 ```
 
-Replace `<skill-name>` with the one you want — e.g. `yiwugo-product-sourcing`, `product-creative-scraper`, `ad-campaign-workflow`. The agent will clone it into the right directory for you.
+Replace `<skill-name>` with any directory name in the table above. The agent will clone it into the right directory for you.
 
 Or clone manually:
 
@@ -115,6 +118,25 @@ pip install openpyxl Pillow requests
 <table>
 <tr><td>
 
+### 📦 standard-product-image
+
+Turn inconsistent supplier or phone photos into category-aware ecommerce white-background prompts or generated images. The workflow preserves visible colors, materials, logos, components, ports, and accessories, then checks the result for structural drift and invented details.
+
+**Key capabilities**
+
+- Category-aware rules plus a generic fallback
+- Platform-specific sizing or safe portable defaults
+- Product identity and hallucination acceptance checklist
+- Prompt-only mode with no provider dependency
+
+→ [SKILL.md](./standard-product-image/SKILL.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
 ### 🔍 product-creative-scraper
 
 > *"Competitor product images, selling points, and visual styles — batch scrape them, AI-analyze them, sync to Feishu Base for team review."*
@@ -167,6 +189,45 @@ export GEMINI_API_KEY="your-key"
 **🌐 Cross-platform**: Claude Code · Codex
 
 → [SKILL.md](./product-creative-scraper/SKILL.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 🎬 ad-storyboard-seedance
+
+A two-stage ad production workflow: generate storyboard sheets from an ad script and product images, stop for human approval, then create vertical clips through user-configured compatible image and Seedance video endpoints.
+
+**Key capabilities**
+
+- Automatic storyboard segmentation up to 15 seconds per segment
+- Product fidelity and advertising-claim constraints
+- Mandatory approval gate before paid video generation
+- Dry-run, parallel generation, recovery artifacts, and ffprobe verification
+
+→ [SKILL.md](./ad-storyboard-seedance/SKILL.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 📱 product-to-ugc-video
+
+Build a character-consistent UGC project from a product image and description: creator planning, character reference, continuous keyframes, adjacent-frame video segments, manifests, logs, and optional merge metadata.
+
+**Key capabilities**
+
+- Neutral, user-controlled casting instead of hidden demographic defaults
+- Character, wardrobe, product, and scene continuity
+- Separately configurable planner, image, and video providers
+- Offline heuristic planning and full dry-run
+- Recoverable artifacts for targeted retries
+
+→ [SKILL.md](./product-to-ugc-video/SKILL.md)
 
 </td></tr>
 </table>
@@ -232,14 +293,20 @@ Platform-independent Meta and TikTok advertising workflow planner. Input a produ
 
 ## 🔗 Sourcing → Creative → Campaign Pipeline
 
-These three skills chain together to cover the full cross-border ecommerce workflow:
+These six skills chain together across sourcing, creative preparation, and production:
 
 ```
 yiwugo-product-sourcing     →  Find suppliers, get prices/MOQ/vendors
         ↓
 product-creative-scraper    →  Analyze competitor creatives, extract selling points & styles
         ↓
+standard-product-image      →  Standardize real product photos for ecommerce
+        ↓
 ad-campaign-workflow        →  Generate complete Meta/TikTok ad strategy package
+        ↓
+ad-storyboard-seedance      →  Generate and approve ad storyboards
+        ↓
+product-to-ugc-video        →  Produce a character-consistent UGC project
 ```
 
 ---

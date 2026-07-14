@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ad Storyboard to Seedance"
+  short_description: "Review storyboards before generating ad video"
+  default_prompt: "Use $ad-storyboard-seedance to turn this ad script and product image into storyboard sheets, stop for approval, then generate vertical video only after I confirm."

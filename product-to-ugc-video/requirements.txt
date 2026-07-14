@@ -1,0 +1,2 @@
+# Runtime uses only the Python standard library.
+# ffmpeg is an optional system dependency for final clip concatenation.

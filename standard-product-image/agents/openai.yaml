@@ -1,0 +1,4 @@
+interface:
+  display_name: "标准商品图"
+  short_description: "识别实拍产品照片并生成电商平台标准白底商品图提示词"
+  default_prompt: "Use $standard-product-image to identify a real product photo and write a standard ecommerce product image prompt."

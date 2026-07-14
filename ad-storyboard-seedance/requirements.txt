@@ -1,0 +1,2 @@
+# Runtime uses only the Python standard library.
+# ffmpeg/ffprobe are optional system dependencies for stitching and validation.

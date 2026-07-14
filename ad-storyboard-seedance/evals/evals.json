@@ -1,0 +1,17 @@
+{
+  "skill_name": "ad-storyboard-seedance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "根据这个30秒广告脚本和产品图，先生成两张image2故事版，确认后再用Seedance生成9:16视频。",
+      "expected_output": "The assistant should use the storyboard stage first, save a project folder, show storyboard outputs, and ask for confirmation before video generation.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "故事版可以，继续用Seedance生成视频，要竖版、有声音、不要fast模型。",
+      "expected_output": "The assistant should run the video stage with --confirmed, non-fast Seedance, 9:16, audio enabled, then verify output with ffprobe.",
+      "files": []
+    }
+  ]
+}

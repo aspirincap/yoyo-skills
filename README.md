@@ -7,7 +7,7 @@
 #### 跨境电商广告投放 & 选品常用 AI 技能集，都开源在这里
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-3-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-6-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -15,7 +15,7 @@
 
 </div>
 
-覆盖跨境电商从 **商品选品 → 竞品素材分析 → 广告投放策略** 的完整链路。
+覆盖跨境电商从 **商品选品 → 竞品素材分析 → 商品图标准化 → 广告策略 → 故事板 → UGC 视频** 的完整链路。
 
 - **Skills** — Agent 能直接加载的结构化指令集，遵循 [Agent Skills](https://agentskills.io) 开放标准。Claude Code、Codex 都能装
 
@@ -29,7 +29,10 @@
 |---|---|
 | 🛒 [**yiwugo-product-sourcing（义乌购选品）**](#-yiwugo-product-sourcing义乌购选品) | API-first 义乌购选品，不打开浏览器就能完成从关键词搜索到货源短名单的全流程 |
 | 🔍 [**product-creative-scraper（产品素材抓取分析）**](#-product-creative-scraper产品素材抓取分析) | 从产品链接批量抓取商品图和卖点，输出飞书多维表格 |
+| 📦 [**standard-product-image（标准商品图）**](#-standard-product-image标准商品图) | 把实拍产品图整理成结构真实、平台友好的电商白底商品图或提示词 |
 | 🎯 [**ad-campaign-workflow（广告投放工作流）**](#-ad-campaign-workflow广告投放工作流) | 从产品 URL 到 Meta/TikTok 完整投放策略包：受众、素材、文案、出价一把出 |
+| 🎬 [**ad-storyboard-seedance（广告故事板转视频）**](#-ad-storyboard-seedance广告故事板转视频) | 先生成故事板并人工确认，再通过可配置的 Seedance 服务生成竖版广告视频 |
+| 📱 [**product-to-ugc-video（产品转 UGC 视频）**](#-product-to-ugc-video产品转-ugc-视频) | 从产品图规划稳定创作者、连续关键帧和可恢复的 UGC 视频片段 |
 
 ---
 
@@ -41,7 +44,7 @@
 帮我安装这个 skill：https://github.com/aspirincap/yoyo-skills/tree/main/<skill-name>
 ```
 
-把 `<skill-name>` 换成你想装的那个，比如 `yiwugo-product-sourcing`、`product-creative-scraper`、`ad-campaign-workflow`。Agent 会自己 clone 到对应目录。
+把 `<skill-name>` 换成上表中的目录名。Agent 会自己 clone 到对应目录。
 
 或者手动 clone：
 
@@ -115,6 +118,38 @@ pip install openpyxl Pillow requests
 <table>
 <tr><td>
 
+### 📦 standard-product-image（标准商品图）
+
+> *"供应商实拍图背景乱、角度杂——先保真，再统一成可上架的白底商品图。"*
+
+识别手机、风扇、锅具、餐具、智能手表、筋膜枪等产品类型，提取源图可见事实，生成平台尺寸友好的白底商品图提示词；有生图工具时也能直接执行并按验收清单检查结构漂移。
+
+**核心能力**
+
+- 品类识别与通用品类回退
+- 保留颜色、材质、Logo、按钮、接口和配件数量
+- 支持用户指定平台尺寸；未指定时使用灵活的安全边距
+- 自动生成负面提示词，禁止虚构功能、认证、包装和装饰
+- 按商品身份、构图、背景、光影和幻觉逐项验收
+
+**怎么触发**
+
+```text
+把这张手持风扇实拍图整理成电商白底商品图
+只输出 1600x1600 的商品图提示词，不要生图
+这个产品不在预设分类里，用通用规则处理
+```
+
+**🌐 跨平台**：Claude Code · Codex
+
+→ [SKILL.md](./standard-product-image/SKILL.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
 ### 🔍 product-creative-scraper（产品素材抓取分析）
 
 > *"竞品的主图、卖点、风格，批量扒下来放到飞书表格里慢慢看。"*
@@ -166,6 +201,70 @@ export GEMINI_API_KEY="your-key"
 **🌐 跨平台**：Claude Code · Codex
 
 → [SKILL.md](./product-creative-scraper/SKILL.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 🎬 ad-storyboard-seedance（广告故事板转视频）
+
+> *"视频生成成本高，先把脚本和产品图变成故事板，确认没问题再生成。"*
+
+两阶段广告视频工作流：先按脚本和产品图生成故事板，停下来等待人工确认，再调用用户配置的 OpenAI-compatible 图片接口与 Seedance 视频接口生成 9:16 片段。
+
+**核心能力**
+
+- 自动按最长 15 秒拆分广告脚本和故事板
+- 产品结构、标签、颜色和广告声明约束
+- 强制人工确认门，避免误花视频额度
+- 支持 dry-run、并发片段生成、失败日志和项目恢复
+- 使用 ffprobe 验证比例、时长、帧率和音频流
+
+**配置**
+
+```bash
+cp .env.example .env
+# 填写 AD_STORYBOARD_BASE_URL、图片/视频模型 ID 和 API Key
+```
+
+**🌐 跨平台**：Claude Code · Codex
+
+→ [SKILL.md](./ad-storyboard-seedance/SKILL.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 📱 product-to-ugc-video（产品转 UGC 视频）
+
+> *"从一张产品图开始，建立稳定创作者，再用连续关键帧生成可拼接的 UGC 视频。"*
+
+把产品图和说明转换成角色一致的短视频项目：规划创作者人设、生成角色参考图、连续关键帧和相邻帧视频片段，并保存完整 manifest、prompt、日志和合并信息。
+
+**核心能力**
+
+- 中性、可配置的创作者设定，不默认性别或年龄
+- 角色、服装、产品和场景连续性约束
+- Planner、图片与视频 Provider 分开配置
+- `--heuristic-plan --dry-run` 可离线预览整个项目
+- 保留成功片段和中间产物，便于恢复失败任务
+
+**离线预览**
+
+```bash
+python3 scripts/product_to_ugc.py \
+  --product-image /path/to/product.jpg \
+  --description "产品可见特点与真实使用场景" \
+  --heuristic-plan --dry-run
+```
+
+**🌐 跨平台**：Claude Code · Codex
+
+→ [SKILL.md](./product-to-ugc-video/SKILL.md)
 
 </td></tr>
 </table>
@@ -228,16 +327,22 @@ export GEMINI_API_KEY="your-key"
 
 ---
 
-## 🔗 选品→投放完整链路
+## 🔗 选品→创意→投放完整链路
 
-这三个 Skill 可以串联使用，覆盖跨境电商从选品到投放的全流程：
+这六个 Skill 可以串联使用，覆盖跨境电商从选品到创意生产的完整流程：
 
 ```
 yiwugo-product-sourcing     →  找到货源，拿到价格/MOQ/供应商
         ↓
 product-creative-scraper    →  分析竞品素材，提取卖点和风格
         ↓
+standard-product-image      →  将实拍素材标准化为电商商品图
+        ↓
 ad-campaign-workflow        →  输出 Meta/TikTok 完整投放策略包
+        ↓
+ad-storyboard-seedance      →  生成并确认广告故事板
+        ↓
+product-to-ugc-video        →  生成角色一致的 UGC 视频项目
 ```
 
 ---

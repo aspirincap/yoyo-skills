@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product To UGC Video"
+  short_description: "Plan and generate product-led UGC assets"
+  default_prompt: "Use $product-to-ugc-video to turn this product image and description into storyboard frames and video-model-ready segments."

@@ -1,0 +1,29 @@
+{
+  "skill_name": "standard-product-image",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把附件里的白色手持风扇实拍图整理成电商白底图提示词，不要生图。保留圆形网罩、按钮、底座和半透明扇叶。",
+      "expected_output": "Classifies the product as a fan, records only visible facts, returns prompt and negative prompt, and explicitly prevents invented components.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "把这套带礼盒的陶瓷餐具做成 1600x1600 商品主图，保留件数、金边和盒内分区。",
+      "expected_output": "Uses the tableware add-on, honors the requested canvas, preserves set count and packaging structure, and includes an acceptance check.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "这个产品不在预设分类里，是一个带两个接口的小型桌面工具。输出通用白底图 prompt，源图看不清的地方不要补。",
+      "expected_output": "Uses the generic fallback, preserves visible interfaces, and marks unreadable details as unknown rather than hallucinating them.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "把这只智能手表生成白底商品图，平台没给尺寸。",
+      "expected_output": "Uses a square high-resolution portable default with flexible 75-85 percent subject coverage and preserves screen, case, crown, sensors, and band shape.",
+      "files": []
+    }
+  ]
+}

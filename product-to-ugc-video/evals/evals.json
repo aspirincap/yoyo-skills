@@ -1,0 +1,23 @@
+{
+  "skill_name": "product-to-ugc-video",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "用这张咖啡杯产品图做一个三段式 UGC 项目。先离线规划，不调用 API，也不要默认创作者性别。",
+      "expected_output": "Uses heuristic planning and dry-run, creates recoverable artifacts, keeps creator demographics unspecified, and does not require a provider key.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "为跑步背心做 9:16 UGC，创作者设定为 40 岁男性，三个 8 秒片段，保持人物、服装和产品一致。",
+      "expected_output": "Honors explicit demographics, creates four adjacent keyframes and three segments, and includes continuity constraints.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "上一轮第二段视频失败了，保留已有角色图和关键帧，只重跑失败片段。",
+      "expected_output": "Inspects the project manifest, preserves successful assets, and plans a targeted retry rather than regenerating the whole project.",
+      "files": []
+    }
+  ]
+}
