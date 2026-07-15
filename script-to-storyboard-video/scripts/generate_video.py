@@ -5,7 +5,7 @@ For compatible video gateways, the create payload can mirror duration and
 format hints into provider-specific metadata.
 
 Examples:
-  export NEWAPI_API_KEY="sk-..."
+  export AI_GATEWAY_API_KEY="..."
   python scripts/generate_video.py \
     --model doubao-seedance-2-0-fast-260128 \
     --prompt "A paper boat on a lake at sunrise" \
@@ -38,11 +38,28 @@ import urllib.request
 import uuid
 from typing import Any
 
-from env_utils import COMMON_BASE_URL_ENV, load_skill_env, resolve_base_url
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from ai_gateway import gateway_base_url, gateway_model, get_first_setting
 
 
-load_skill_env()
-
+SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
+DEFAULT_BASE_URL = gateway_base_url(
+    "AD_STORYBOARD_BASE_URL",
+    "UGC_VIDEO_BASE_URL",
+    "VIDEO_API_BASE_URL",
+    "UGC_API_BASE_URL",
+    skill_dir=SKILL_DIR,
+)
+DEFAULT_MODEL = gateway_model(
+    "video",
+    "AD_STORYBOARD_VIDEO_MODEL",
+    "UGC_VIDEO_MODEL",
+    default="seedance-model-id",
+    skill_dir=SKILL_DIR,
+)
 DONE_STATES = {"completed", "success", "succeeded"}
 FAILED_STATES = {"failed", "fail", "error", "expired"}
 
@@ -190,12 +207,11 @@ def image_roles(args: argparse.Namespace, count: int) -> list[str]:
 def get_api_key(args: argparse.Namespace) -> str:
     if args.api_key:
         return args.api_key
-    for env_name in args.api_key_env:
-        value = os.getenv(env_name)
-        if value:
-            return value
+    value = get_first_setting(args.api_key_env, skill_dir=SKILL_DIR)
+    if value:
+        return value
     raise SystemExit(
-        "API key not found. Set NEWAPI_API_KEY or pass --api-key. "
+        "API key not found. Run configure_ai_gateway.py, set AI_GATEWAY_API_KEY, or pass --api-key. "
         "You can also add env names with --api-key-env."
     )
 
@@ -519,16 +535,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--base-url",
-        help="OpenAI-compatible root URL. Defaults to AD_STORYBOARD_BASE_URL or VIDEO_API_BASE_URL.",
+        default=DEFAULT_BASE_URL,
+        help="NewAPI-compatible root URL. Defaults to AI_GATEWAY_BASE_URL, then legacy variables.",
     )
     parser.add_argument(
         "--api-key-env",
         action="append",
-        default=["NEWAPI_API_KEY", "PRODUCT_UGC_VIDEO_API_KEY", "VIDEO_API_KEY"],
+        default=[
+            "AI_GATEWAY_API_KEY",
+            "AD_STORYBOARD_API_KEY",
+            "UGC_VIDEO_API_KEY",
+            "VIDEO_API_KEY",
+            "UGC_API_KEY",
+            "NEWAPI_API_KEY",
+            "OPENAI_API_KEY",
+            "PRODUCT_UGC_VIDEO_API_KEY",
+        ],
         help="Environment variable to read the API key from. Can be repeated.",
     )
     parser.add_argument("--api-key", help="API key. Prefer env vars for shell history safety.")
-    parser.add_argument("--model", default=os.getenv("AD_STORYBOARD_VIDEO_MODEL", "seedance-model-id"))
+    parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--prompt")
     parser.add_argument("--prompt-file")
     parser.add_argument("--task-id", help="Skip creation and query an existing task.")
@@ -618,13 +644,16 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     prompt = read_prompt(args)
-    if not (args.dry_run and not args.task_id):
-        args.base_url = resolve_base_url(args.base_url, (COMMON_BASE_URL_ENV, "VIDEO_API_BASE_URL"))
-
     if args.dry_run and not args.task_id:
         payload = build_create_payload(args, prompt)
         print(json.dumps(redact_large_values(payload), ensure_ascii=False, indent=2))
         return 0
+
+    if not args.base_url:
+        raise SystemExit(
+            "Video base URL is required. Run configure_ai_gateway.py, set AI_GATEWAY_BASE_URL, "
+            "or pass --base-url."
+        )
 
     api_key = get_api_key(args)
 

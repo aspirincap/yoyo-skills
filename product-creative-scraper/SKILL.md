@@ -81,13 +81,12 @@ python3 scripts/analyze_assets.py --scrape-json scrape.json --format json
 
 Use `--image-cache-dir` when attachments will be uploaded later; the analyzer writes `image_cache_path` so the upload step can reuse the same local files instead of downloading every image again. In `--mock` mode, passing `--image-cache-dir` still downloads/cache-images for pipeline tests while skipping model calls.
 
-The analyzer uses `GEMINI_API_KEY` by default and the model in `GEMINI_VLM_MODEL`, falling back to `gemini-2.5-flash`. If `GEMINI_BASE_URL` is set, it calls that OpenAI-compatible base URL via `/v1/chat/completions`; otherwise it calls the official Google Gemini REST endpoint. Use `--mock` for local pipeline checks without calling a model.
+Configure a NewAPI-compatible gateway once with `python3 scripts/configure_ai_gateway.py`. The analyzer then reads `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY`, and `AI_VISION_MODEL` from `~/.config/ai-gateway/config.env`. Shell variables and skill-local `.env` override the shared file. Existing `GEMINI_BASE_URL`, `GEMINI_API_KEY`, and `GEMINI_VLM_MODEL` remain fallback aliases. Without a custom base URL, the analyzer retains the official Google Gemini REST fallback. Use `--mock` for local pipeline checks without calling a model.
 
-Custom base URL:
+Shared gateway:
 
 ```bash
-export GEMINI_BASE_URL="https://your-openai-compatible-endpoint.example.com"
-export GEMINI_API_KEY="..."
+python3 scripts/configure_ai_gateway.py
 python3 scripts/analyze_assets.py --scrape-json scrape.json --model gemini-2.5-flash
 ```
 

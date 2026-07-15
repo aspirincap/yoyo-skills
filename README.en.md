@@ -33,7 +33,7 @@ Each skill is designed around practical ecommerce work. Together they cover: **p
 | 🎙️ [**open-tiktok-script**](#-open-tiktok-script) | Turn public competitor videos into creator-native scripts, storyboards, Creator Briefs, and advertising-safety reviews |
 | 📦 [**standard-product-image**](#-standard-product-image) | Turn real product photos into faithful, marketplace-ready white-background images or editing prompts |
 | 🎯 [**ad-campaign-workflow**](#-ad-campaign-workflow) | Turn a product URL into a complete Meta/TikTok ad strategy package — audiences, creatives, copy, and validation reports |
-| 🎬 [**ad-storyboard-seedance**](#-ad-storyboard-seedance) | Generate product-faithful storyboards, require approval, then create vertical ad clips through a configurable Seedance provider |
+| 🎬 [**script-to-storyboard-video**](#-script-to-storyboard-video) | When an ad script already exists, generate storyboards, require approval, then create vertical ad clips |
 | 📱 [**product-to-ugc-video**](#-product-to-ugc-video) | Build a consistent creator, adjacent keyframes, recoverable segments, and merge metadata from a product image |
 
 ---
@@ -57,6 +57,18 @@ git clone https://github.com/aspirincap/yoyo-skills.git ~/.claude/skills/
 # Codex
 git clone https://github.com/aspirincap/yoyo-skills.git ~/.codex/skills/
 ```
+
+---
+
+## 🔌 Configure one AI gateway
+
+Four AI-calling skills support any NewAPI-compatible gateway through shared, provider-neutral `AI_GATEWAY_*` configuration:
+
+```bash
+python3 shared/ai-gateway/configure_ai_gateway.py
+```
+
+The command securely writes `~/.config/ai-gateway/config.env` for `product-creative-scraper`, `open-tiktok-script`, `script-to-storyboard-video`, and `product-to-ugc-video`. See [AI_GATEWAY.md](./AI_GATEWAY.md).
 
 ---
 
@@ -237,7 +249,7 @@ python3 scripts/sync_lark_base.py --scrape-json scrape.json --analysis-json anal
 ```bash
 pip install requests Pillow openpyxl
 # For AI analysis
-export GEMINI_API_KEY="your-key"
+python3 scripts/configure_ai_gateway.py
 ```
 
 **🌐 Cross-platform**: Claude Code · Codex
@@ -250,9 +262,11 @@ export GEMINI_API_KEY="your-key"
 <table>
 <tr><td>
 
-### 🎬 ad-storyboard-seedance
+### 🎬 script-to-storyboard-video
 
-A two-stage ad production workflow: generate storyboard sheets from an ad script and product images, stop for human approval, then create vertical clips through user-configured compatible image and Seedance video endpoints.
+A two-stage workflow for requests that already include an ad script: generate storyboard sheets from the script and product images, stop for human approval, then create vertical clips through user-configured NewAPI-compatible image and video endpoints. Use `product-to-ugc-video` instead when creator identity and continuous keyframes are the goal.
+
+> Formerly `ad-storyboard-seedance`; existing installations should switch to the `script-to-storyboard-video` directory and skill name.
 
 **Key capabilities**
 
@@ -261,7 +275,7 @@ A two-stage ad production workflow: generate storyboard sheets from an ad script
 - Mandatory approval gate before paid video generation
 - Dry-run, parallel generation, recovery artifacts, and ffprobe verification
 
-→ [SKILL.md](./ad-storyboard-seedance/SKILL.md)
+→ [SKILL.md](./script-to-storyboard-video/SKILL.md)
 
 </td></tr>
 </table>
@@ -347,7 +361,7 @@ Platform-independent Meta and TikTok advertising workflow planner. Input a produ
 
 ## 🔗 Sourcing → Creative → Campaign Pipeline
 
-These six skills chain together across sourcing, creative preparation, and production:
+These eight skills chain together across sourcing, creative preparation, and production:
 
 ```
 yiwugo-product-sourcing     →  Find suppliers, get prices/MOQ/vendors
@@ -358,9 +372,9 @@ standard-product-image      →  Standardize real product photos for ecommerce
         ↓
 ad-campaign-workflow        →  Generate complete Meta/TikTok ad strategy package
         ↓
-ad-storyboard-seedance      →  Generate and approve ad storyboards
+script-to-storyboard-video  →  Generate and approve storyboards from an existing script
         ↓
-product-to-ugc-video        →  Produce a character-consistent UGC project
+product-to-ugc-video        →  Produce UGC when creator continuity is required
 ```
 
 ---

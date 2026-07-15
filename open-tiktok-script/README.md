@@ -37,16 +37,13 @@
 - [`yt-dlp`](https://github.com/yt-dlp/yt-dlp)，仅下载公共 TikTok 视频时需要
 - 用户配置的 Gemini-compatible 视频分析服务
 
-默认配置使用 Google Gemini API：
+推荐一次配置任意 NewAPI-compatible 网关：
 
-```env
-GEMINI_VIDEO_API_KEY=replace_with_your_key
-GEMINI_VIDEO_BASE_URL=https://generativelanguage.googleapis.com
-GEMINI_VIDEO_MODEL=gemini-2.5-flash
-GEMINI_VIDEO_AUTH_MODE=x-goog
+```bash
+python3 scripts/configure_ai_gateway.py
 ```
 
-也可以配置兼容网关，并根据网关要求选择 `x-goog`、`bearer` 或 `both`。不要把真实 `.env` 提交到版本库。
+配置保存在 `~/.config/ai-gateway/config.env`，供多个 Skill 共享。核心变量为 `AI_GATEWAY_BASE_URL`、`AI_GATEWAY_API_KEY` 和 `AI_VISION_MODEL`。未配置统一网关时仍可回退 Google Gemini API；旧的 `GEMINI_VIDEO_*` 变量继续兼容。不要把真实凭据提交到版本库。
 
 ## 数据与隐私边界
 
@@ -61,7 +58,7 @@ GEMINI_VIDEO_AUTH_MODE=x-goog
 ## 快速开始
 
 ```bash
-cp .env.example .env
+python3 scripts/configure_ai_gateway.py
 uv run scripts/download_tiktok.py \
   --urls "https://www.tiktok.com/@creator/video/123" \
   --output-dir _temp/tiktok-downloads

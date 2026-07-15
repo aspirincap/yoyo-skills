@@ -3,21 +3,21 @@
 ## Env Setup
 
 ```bash
-cd /path/to/ad-storyboard-seedance
-cp .env.example .env
+cd /path/to/script-to-storyboard-video
+python3 scripts/configure_ai_gateway.py
 ```
 
-Fill `AD_STORYBOARD_BASE_URL` and at least one API key in `.env`. The scripts also accept shell exports and explicit `--base-url`.
+The shared configuration supplies `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY`, `AI_IMAGE_MODEL`, and `AI_VIDEO_MODEL`. Skill-local `.env`, shell exports, and explicit CLI values can override it.
 
 ## Storyboard Stage
 
 ```bash
-python3 scripts/ad_storyboard_pipeline.py storyboard \
+python3 scripts/script_to_storyboard_video.py storyboard \
   --script-file /absolute/path/script.txt \
   --product-image /absolute/path/product.png \
   --duration 30 \
   --project-name my-ad \
-  --api-key-env OPENAI_API_KEY,NEWAPI_API_KEY
+  --api-key-env AI_GATEWAY_API_KEY
 ```
 
 Useful flags:
@@ -33,17 +33,17 @@ Useful flags:
 ## Video Stage
 
 ```bash
-python3 scripts/ad_storyboard_pipeline.py video \
+python3 scripts/script_to_storyboard_video.py video \
   --project-dir /absolute/path/project \
   --confirmed \
-  --api-key-env OPENAI_API_KEY,NEWAPI_API_KEY \
+  --api-key-env AI_GATEWAY_API_KEY \
   --parallel 2
 ```
 
 Useful flags:
 
 - `--confirmed`: required for real video generation
-- `--video-model`: defaults to `AD_STORYBOARD_VIDEO_MODEL`; set it to the model ID supported by your provider
+- `--video-model`: defaults to `AI_VIDEO_MODEL`; set it to the model ID supported by your provider
 - `--ratio`: default `9:16`
 - `--width`: default `720`
 - `--height`: default `1280`

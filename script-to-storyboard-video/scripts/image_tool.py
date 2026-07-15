@@ -2,7 +2,7 @@
 """Reusable CLI for OpenAI-format image generation and editing.
 
 Examples:
-  export NEWAPI_API_KEY="sk-..."
+  export AI_GATEWAY_API_KEY="..."
 
   python scripts/image_tool.py generate \
     --model gpt-image-2 \
@@ -38,12 +38,28 @@ import urllib.request
 import uuid
 from typing import Any
 
-from env_utils import COMMON_BASE_URL_ENV, load_skill_env, resolve_base_url
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from ai_gateway import gateway_base_url, gateway_model, get_first_setting
 
 
-load_skill_env()
-
-DEFAULT_MODEL = os.getenv("AD_STORYBOARD_IMAGE_MODEL", "gpt-image-1")
+SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
+DEFAULT_BASE_URL = gateway_base_url(
+    "AD_STORYBOARD_BASE_URL",
+    "UGC_IMAGE_BASE_URL",
+    "IMAGE_API_BASE_URL",
+    "UGC_API_BASE_URL",
+    skill_dir=SKILL_DIR,
+)
+DEFAULT_MODEL = gateway_model(
+    "image",
+    "AD_STORYBOARD_IMAGE_MODEL",
+    "UGC_IMAGE_MODEL",
+    default="gpt-image-1",
+    skill_dir=SKILL_DIR,
+)
 DATA_URL_RE = re.compile(r"data:image/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)")
 
 
@@ -79,12 +95,11 @@ def read_prompt(args: argparse.Namespace) -> str:
 def get_api_key(args: argparse.Namespace) -> str:
     if args.api_key:
         return args.api_key
-    for env_name in args.api_key_env:
-        value = os.getenv(env_name)
-        if value:
-            return value
+    value = get_first_setting(args.api_key_env, skill_dir=SKILL_DIR)
+    if value:
+        return value
     raise SystemExit(
-        "API key not found. Set NEWAPI_API_KEY or pass --api-key. "
+        "API key not found. Run configure_ai_gateway.py, set AI_GATEWAY_API_KEY, or pass --api-key. "
         "You can also add env names with --api-key-env."
     )
 
@@ -380,12 +395,22 @@ def save_chat_images(args: argparse.Namespace, response: dict[str, Any]) -> list
 def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--base-url",
-        help="OpenAI-compatible root URL. Defaults to AD_STORYBOARD_BASE_URL or IMAGE_API_BASE_URL.",
+        default=DEFAULT_BASE_URL,
+        help="NewAPI-compatible root URL. Defaults to AI_GATEWAY_BASE_URL, then legacy variables.",
     )
     parser.add_argument(
         "--api-key-env",
         action="append",
-        default=["NEWAPI_API_KEY", "PRODUCT_UGC_IMAGE_API_KEY", "IMAGE_API_KEY"],
+        default=[
+            "AI_GATEWAY_API_KEY",
+            "AD_STORYBOARD_API_KEY",
+            "UGC_IMAGE_API_KEY",
+            "IMAGE_API_KEY",
+            "UGC_API_KEY",
+            "NEWAPI_API_KEY",
+            "OPENAI_API_KEY",
+            "PRODUCT_UGC_IMAGE_API_KEY",
+        ],
         help="Environment variable to read the API key from. Can be repeated.",
     )
     parser.add_argument("--api-key", help="API key. Prefer env vars for shell history safety.")
@@ -434,8 +459,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     prompt = read_prompt(args)
-    if not args.dry_run:
-        args.base_url = resolve_base_url(args.base_url, (COMMON_BASE_URL_ENV, "IMAGE_API_BASE_URL"))
+    if not args.dry_run and not args.base_url:
+        raise SystemExit(
+            "Image base URL is required. Run configure_ai_gateway.py, set AI_GATEWAY_BASE_URL, "
+            "or pass --base-url."
+        )
 
     try:
         if args.command == "generate":

@@ -18,6 +18,12 @@
       "prompt": "上一轮第二段视频失败了，保留已有角色图和关键帧，只重跑失败片段。",
       "expected_output": "Inspects the project manifest, preserves successful assets, and plans a targeted retry rather than regenerating the whole project.",
       "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "我已经有完整广告脚本，先给我生成故事板审核，通过后再生成视频。",
+      "expected_output": "The assistant should route this existing-script, approval-gated request to script-to-storyboard-video rather than the character-led UGC workflow.",
+      "files": []
     }
   ]
 }

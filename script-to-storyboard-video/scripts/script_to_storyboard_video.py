@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Two-stage ad storyboard -> Seedance video pipeline.
+"""Two-stage script -> approved storyboard -> video pipeline.
 
 Stage 1:
   Generate one or more storyboard sheets from an ad script and product images.
@@ -7,7 +7,7 @@ Stage 1:
 Stage 2:
   After human approval, turn approved storyboard sheets into Seedance clips.
 
-This wrapper intentionally reuses the extracted product-to-ugc-video scripts:
+This wrapper uses the vendored shared media runtime:
   - image_tool.py
   - generate_video.py
 """
@@ -18,7 +18,6 @@ import argparse
 import concurrent.futures
 import json
 import math
-import os
 import pathlib
 import re
 import subprocess
@@ -26,28 +25,37 @@ import sys
 import time
 from typing import Any
 
-from env_utils import COMMON_BASE_URL_ENV, load_skill_env, resolve_base_url
-
-
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from ai_gateway import gateway_base_url, gateway_model
+
+
 IMAGE_TOOL = SCRIPT_DIR / "image_tool.py"
 VIDEO_TOOL = SCRIPT_DIR / "generate_video.py"
 
-load_skill_env()
-
-DEFAULT_OUTPUT_ROOT = pathlib.Path("outputs/ad-storyboard-seedance")
+SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
+DEFAULT_OUTPUT_ROOT = pathlib.Path("outputs/script-to-storyboard-video")
+DEFAULT_BASE_URL = gateway_base_url(
+    "AD_STORYBOARD_BASE_URL", "IMAGE_API_BASE_URL", "VIDEO_API_BASE_URL", skill_dir=SKILL_DIR
+)
 DEFAULT_API_KEY_ENVS = (
-    "NEWAPI_API_KEY,OPENAI_API_KEY,"
+    "AI_GATEWAY_API_KEY,NEWAPI_API_KEY,OPENAI_API_KEY,"
     "PRODUCT_UGC_IMAGE_API_KEY,PRODUCT_UGC_VIDEO_API_KEY,"
     "IMAGE_API_KEY,VIDEO_API_KEY"
 )
-DEFAULT_IMAGE_MODEL = os.getenv("AD_STORYBOARD_IMAGE_MODEL", "gpt-image-1")
-DEFAULT_VIDEO_MODEL = os.getenv("AD_STORYBOARD_VIDEO_MODEL", "seedance-model-id")
+DEFAULT_IMAGE_MODEL = gateway_model(
+    "image", "AD_STORYBOARD_IMAGE_MODEL", default="gpt-image-1", skill_dir=SKILL_DIR
+)
+DEFAULT_VIDEO_MODEL = gateway_model(
+    "video", "AD_STORYBOARD_VIDEO_MODEL", default="seedance-model-id", skill_dir=SKILL_DIR
+)
 
 
 def slugify(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", value).strip("-").lower()
-    return cleaned or "ad-storyboard-seedance"
+    return cleaned or "script-to-storyboard-video"
 
 
 def read_script(args: argparse.Namespace) -> str:
@@ -197,8 +205,11 @@ def command_storyboard(args: argparse.Namespace) -> int:
     if not product_images:
         raise SystemExit("At least one --product-image is required for storyboards.")
     base_url = args.base_url or "https://api.example.com"
-    if not args.dry_run:
-        base_url = resolve_base_url(args.base_url, (COMMON_BASE_URL_ENV, "IMAGE_API_BASE_URL"))
+    if not args.dry_run and not args.base_url:
+        raise SystemExit(
+            "Gateway base URL is required. Run configure_ai_gateway.py, set AI_GATEWAY_BASE_URL, "
+            "or pass --base-url."
+        )
 
     segments = split_segments(args.duration, args.segment_duration, args.storyboard_count)
     project_dir = make_project_dir(pathlib.Path(args.output_root), args.project_name)
@@ -207,7 +218,7 @@ def command_storyboard(args: argparse.Namespace) -> int:
     write_text(script_path, script_text)
 
     manifest: dict[str, Any] = {
-        "skill": "ad-storyboard-seedance",
+        "skill": "script-to-storyboard-video",
         "stage": "storyboard",
         "project_dir": str(project_dir),
         "duration": args.duration,
@@ -351,8 +362,11 @@ def command_video(args: argparse.Namespace) -> int:
     if not args.confirmed and not args.dry_run:
         raise SystemExit("Refusing to generate video before approval. Re-run with --confirmed after the storyboard is approved.")
     args.base_url = args.base_url or "https://api.example.com"
-    if not args.dry_run:
-        args.base_url = resolve_base_url(args.base_url, (COMMON_BASE_URL_ENV, "VIDEO_API_BASE_URL"))
+    if not args.dry_run and not DEFAULT_BASE_URL and args.base_url == "https://api.example.com":
+        raise SystemExit(
+            "Gateway base URL is required. Run configure_ai_gateway.py, set AI_GATEWAY_BASE_URL, "
+            "or pass --base-url."
+        )
     project_dir = pathlib.Path(args.project_dir).expanduser().resolve()
     project = load_project(project_dir)
     segments = project.get("segments") or []
@@ -381,7 +395,7 @@ def command_video(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Ad script + product image -> image2 storyboard -> Seedance video.")
+    parser = argparse.ArgumentParser(description="Ad script + product image -> approved storyboard -> vertical video.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     story = subparsers.add_parser("storyboard", help="Generate storyboard sheet(s) from a script and product image(s).")
@@ -399,7 +413,8 @@ def build_parser() -> argparse.ArgumentParser:
     story.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     story.add_argument(
         "--base-url",
-        help="OpenAI-compatible root URL. Defaults to AD_STORYBOARD_BASE_URL or IMAGE_API_BASE_URL.",
+        default=DEFAULT_BASE_URL,
+        help="NewAPI-compatible root URL. Defaults to AI_GATEWAY_BASE_URL, then legacy variables.",
     )
     story.add_argument("--api-key-env", default=DEFAULT_API_KEY_ENVS)
     story.add_argument("--image-model", default=DEFAULT_IMAGE_MODEL)
@@ -408,13 +423,14 @@ def build_parser() -> argparse.ArgumentParser:
     story.add_argument("--dry-run", action="store_true")
     story.set_defaults(func=command_storyboard)
 
-    video = subparsers.add_parser("video", help="Generate Seedance videos from approved storyboard sheet(s).")
+    video = subparsers.add_parser("video", help="Generate videos from approved storyboard sheet(s).")
     video.add_argument("--project-dir", required=True)
     video.add_argument("--confirmed", action="store_true", help="Required for real video generation after human approval.")
     video.add_argument("--product-notes")
     video.add_argument(
         "--base-url",
-        help="OpenAI-compatible root URL. Defaults to AD_STORYBOARD_BASE_URL or VIDEO_API_BASE_URL.",
+        default=DEFAULT_BASE_URL,
+        help="NewAPI-compatible root URL. Defaults to AI_GATEWAY_BASE_URL, then legacy variables.",
     )
     video.add_argument("--api-key-env", default=DEFAULT_API_KEY_ENVS)
     video.add_argument("--video-model", default=DEFAULT_VIDEO_MODEL)

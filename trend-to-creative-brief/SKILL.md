@@ -2,12 +2,13 @@
 name: trend-to-creative-brief
 description: Directly research recent public TikTok and Instagram posts, or accept supplied social/search/creator/commerce evidence, then turn it into a brand-specific creative testing brief with source strength, freshness, market confidence, brand fit, adaptation logic, expiry, risks, hooks, formats, and experiments. Use whenever the user asks what is trending on TikTok or Instagram, requests recent social evidence for a market or date window, wants to rank trends for a product, or needs original ad/organic concepts without blindly copying creators.
 license: MIT
-compatibility: Live TikTok/Instagram research has a hard dependency on the UnifAPI MCP server at https://mcp.unifapi.com and its list_operations, get_operation and call_api tools. Connect through OAuth at https://unifapi.com/zh/mcp. Offline normalization and user-supplied evidence use Python 3.10+ standard library only.
 ---
 
 # Trend to Creative Brief
 
 Convert trend evidence into an actionable, brand-safe creative test plan. Discovery and adaptation are separate jobs: a popular format is not automatically right for a brand.
+
+Offline normalization and user-supplied evidence use Python 3.10+ standard library only. Live TikTok/Instagram research has the hard MCP dependency described below.
 
 ## Hard Dependency: UnifAPI MCP
 

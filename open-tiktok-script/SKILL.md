@@ -31,14 +31,14 @@ TikTok脚本优先追求 creator-native：
 - Python 3.10+
 - `uv`（Python包管理器）
 - `yt-dlp`（TikTok视频下载，需 `pip install yt-dlp` 或 `brew install yt-dlp`）
-- Gemini视频分析使用用户配置的 Gemini-compatible endpoint，本 skill 使用独立的项目内配置文件：
-  - 默认 Base URL：`https://generativelanguage.googleapis.com`
-  - 默认模型：`gemini-2.5-flash`
+- Gemini视频分析使用用户配置的 NewAPI-compatible/Gemini-compatible endpoint：
+  - 首选运行 `python3 scripts/configure_ai_gateway.py`，一次写入 `~/.config/ai-gateway/config.env`
+  - `AI_GATEWAY_BASE_URL`：网关根地址；未配置时回退 Google Gemini API
+  - `AI_GATEWAY_API_KEY`：统一模型 API Token
+  - `AI_VISION_MODEL`：视频理解模型；默认 `gemini-2.5-flash`
   - 默认 endpoint：`/v1beta/models/gemini-2.5-flash:generateContent`
-  - API Key 优先从 shell 环境读取，其次从本 skill 项目内的 `SKILL_DIR/.env` 读取
-  - Key 环境变量按顺序支持：`GEMINI_VIDEO_API_KEY`、`GEMINI_API_KEY`、`GOOGLE_API_KEY`、`NEWAPI_API_KEY`
-  - 不读取 `~/.config/gemini-video-analysis/.env`，也不读取 `GEMINI_VIDEO_ENV_FILE`
-  - 不把密钥写进 `SKILL.md`；本地持久配置请使用 `SKILL_DIR/.env`
+  - 读取优先级：shell 环境、`SKILL_DIR/.env`、共享全局配置、默认值
+  - 旧的 `GEMINI_VIDEO_*`、`GEMINI_API_KEY`、`GOOGLE_API_KEY`、`NEWAPI_API_KEY` 继续兼容
 - 可选：用户明确同意后，使用其 Chrome/Edge/Firefox TikTok 会话 Cookie。不得自动读取浏览器 Cookie，也不得绕过私密、年龄或地域访问限制。仅分析用户有权访问和使用的内容，下载视频不得随交付物再分发。
 
 视频分析会把本地视频发送到用户配置的外部 Gemini-compatible provider。第一次上传前说明目标域名并取得用户同意；不要上传含敏感个人信息、未授权人物或机密素材的视频。
@@ -107,10 +107,9 @@ uv run SKILL_DIR/scripts/analyze_video.py \
 **使用 flash 模型 + medium 分辨率**：`--model flash` 默认映射到 `gemini-2.5-flash`，短视频通常足够；实际可用模型和价格由用户的 provider 决定。
 
 **Key 与 Base URL**：
-- 默认读取 `GEMINI_VIDEO_API_KEY` / `GEMINI_API_KEY` / `GOOGLE_API_KEY` / `NEWAPI_API_KEY`。
-- 默认读取 `GEMINI_VIDEO_BASE_URL`，未设置时使用 Google Gemini API：`https://generativelanguage.googleapis.com`。
-- 本地持久 key 使用 `SKILL_DIR/.env`，不复用 `$gemini-video-analysis` 的全局配置文件。
-- 默认仅发送 `x-goog-api-key`。兼容网关如需 Bearer，可加 `--auth-mode bearer`；确有需要时才使用 `--auth-mode both`。
+- 默认读取 `AI_GATEWAY_API_KEY`、`AI_GATEWAY_BASE_URL` 和 `AI_VISION_MODEL`。
+- 统一网关默认使用 Bearer；未配置统一网关而回退 Google Gemini 时默认使用 `x-goog-api-key`。
+- 兼容旧变量与 `--auth-mode x-goog|bearer|both` 覆盖。
 
 **文件大小**：默认 inline payload 安全限制为 20MB。超过时先剪短、压缩或拆分视频，不切换到 File API。
 

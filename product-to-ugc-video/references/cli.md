@@ -91,17 +91,13 @@ Use `scripts/generate_video.py --dry-run ...` to inspect the exact JSON payload 
 
 ## Provider setup
 
-Export explicit provider configuration before a real run:
+Configure the shared gateway once before a real run:
 
 ```bash
-export UGC_API_BASE_URL="https://api.example.com"
-export UGC_IMAGE_BASE_URL="https://api.example.com"
-export UGC_VIDEO_BASE_URL="https://api.example.com"
-export UGC_API_KEY="your-key"
-export UGC_VIDEO_MODEL="seedance-model-id"
+python3 scripts/configure_ai_gateway.py
 ```
 
-The planner uses `UGC_API_BASE_URL`; image and video stages use their modality-specific URLs. `--heuristic-plan` avoids the planner API.
+This configures `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY`, `AI_TEXT_MODEL`, `AI_IMAGE_MODEL`, and `AI_VIDEO_MODEL` in `~/.config/ai-gateway/config.env`. Existing `UGC_*` variables remain fallback aliases. `--heuristic-plan` avoids the planner API.
 
 ## Dependencies
 

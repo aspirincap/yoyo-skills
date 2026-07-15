@@ -7,7 +7,6 @@ import argparse
 import base64
 import csv
 import json
-import os
 import re
 import sys
 from collections import Counter
@@ -16,9 +15,18 @@ from urllib.parse import urlparse
 
 import requests
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
-DEFAULT_MODEL = os.environ.get("GEMINI_VLM_MODEL", "gemini-2.5-flash")
-DEFAULT_BASE_URL = os.environ.get("GEMINI_BASE_URL", "")
+from ai_gateway import gateway_api_key, gateway_base_url, gateway_model
+
+
+SKILL_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_MODEL = gateway_model(
+    "vision", "GEMINI_VLM_MODEL", default="gemini-2.5-flash", skill_dir=SKILL_DIR
+)
+DEFAULT_BASE_URL = gateway_base_url("GEMINI_BASE_URL", skill_dir=SKILL_DIR) or ""
 GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 ANALYSIS_FIELDS = [
     "image_type",
@@ -286,9 +294,11 @@ def normalize_analysis(raw: dict) -> dict:
 
 
 def analyze_assets(assets: list[dict], args: argparse.Namespace) -> list[dict]:
-    api_key = os.environ.get("GEMINI_API_KEY", "")
+    api_key = gateway_api_key("GEMINI_API_KEY", "NEWAPI_API_KEY", "OPENAI_API_KEY", skill_dir=SKILL_DIR) or ""
     if not args.mock and not api_key:
-        raise RuntimeError("GEMINI_API_KEY is required unless --mock is used")
+        raise RuntimeError(
+            "Run configure_ai_gateway.py or set AI_GATEWAY_API_KEY; GEMINI_API_KEY remains supported."
+        )
 
     rows = []
     for asset in assets:
@@ -356,7 +366,7 @@ def main() -> int:
     parser.add_argument("--scrape-json", required=True, help="JSON output from run_product_scrape.py")
     parser.add_argument("--max-images-per-product", type=int, default=3)
     parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="OpenAI-compatible Gemini base URL")
+    parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="NewAPI-compatible root URL")
     parser.add_argument("--timeout", type=int, default=45)
     parser.add_argument("--format", choices=["json", "csv"], default="json")
     parser.add_argument("--include-summary", action="store_true")

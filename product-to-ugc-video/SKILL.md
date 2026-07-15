@@ -1,8 +1,6 @@
 ---
 name: product-to-ugc-video
-description: Turn a product image plus product description into a character-led UGC video project. Use when Codex should plan a stable creator persona, generate a character reference, create continuous keyframes, call local image and video generation scripts for Veo or Seedance, and prepare adjacent-frame video segments plus merge metadata for a final short-form social video.
-license: MIT
-compatibility: Python 3.10+, configurable OpenAI-compatible planning/image endpoints and a compatible asynchronous video endpoint; ffmpeg is optional for merging.
+description: Turn a product image plus product description into a character-led UGC video project with a stable creator persona, character reference, continuous keyframes, adjacent-frame video segments, and merge metadata. Use when character identity and scene continuity are the core requirement. Do not use when the user already has an ad script and wants storyboard sheets reviewed before video generation; use script-to-storyboard-video for that workflow.
 ---
 
 # Product To UGC Video
@@ -61,6 +59,16 @@ If demographic fields are missing, keep them unspecified or choose a product-rel
 6. Save an assembly manifest and merge metadata for final stitching.
 
 ## Provider Compatibility
+
+Configure a provider-neutral NewAPI-compatible gateway once:
+
+```bash
+python3 scripts/configure_ai_gateway.py
+```
+
+The shared file at `~/.config/ai-gateway/config.env` supplies `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY`, `AI_TEXT_MODEL`, `AI_IMAGE_MODEL`, and `AI_VIDEO_MODEL`. Shell variables and skill-local `.env` values override it. Existing `UGC_*`, `LLM_*`, `IMAGE_API_*`, `VIDEO_API_*`, and `NEWAPI_*` variables remain compatible.
+
+The vendored `image_tool.py` and `generate_video.py` files are generated from the repository's single `shared/media-runtime/` source, while remaining bundled here for independent installation.
 
 `scripts/generate_video.py` includes common compatibility fields for gateway models whose name contains `veo` or `seedance`.
 

@@ -8,7 +8,7 @@ import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "ad_storyboard_pipeline.py"
+SCRIPT = ROOT / "scripts" / "script_to_storyboard_video.py"
 
 def load_pipeline():
     sys.path.insert(0, str(ROOT / "scripts"))
@@ -20,6 +20,9 @@ def load_pipeline():
 
 def main() -> int:
     pipeline = load_pipeline()
+    skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+    assert "name: script-to-storyboard-video" in skill
+    assert "Do not use for creator-persona" in skill
     assert pipeline.split_segments(30, 15) == [(0, 15), (15, 30)]
     assert pipeline.split_segments(16, 15) == [(0, 15), (15, 16)]
     with tempfile.TemporaryDirectory() as tmp:

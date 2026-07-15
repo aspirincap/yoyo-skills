@@ -25,11 +25,18 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
-DEFAULT_BASE_URL = None
-DEFAULT_PLANNER_MODEL = "auto"
-DEFAULT_IMAGE_MODEL = "auto"
-DEFAULT_VIDEO_MODEL = "auto"
+from ai_gateway import gateway_base_url, gateway_model, get_first_setting
+
+
+SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
+DEFAULT_BASE_URL = gateway_base_url("UGC_API_BASE_URL", "LLM_API_BASE_URL", skill_dir=SKILL_DIR)
+DEFAULT_PLANNER_MODEL = gateway_model("text", "UGC_PLANNER_MODEL", default="auto", skill_dir=SKILL_DIR)
+DEFAULT_IMAGE_MODEL = gateway_model("image", "UGC_IMAGE_MODEL", default="auto", skill_dir=SKILL_DIR)
+DEFAULT_VIDEO_MODEL = gateway_model("video", "UGC_VIDEO_MODEL", default="auto", skill_dir=SKILL_DIR)
 DEFAULT_TRIM_TAIL_SECONDS = 0.333
 PLANNER_MODEL_CANDIDATES = [
     "gpt-5.4-mini",
@@ -116,11 +123,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--api-key-env",
         action="append",
-        default=["UGC_API_KEY", "LLM_API_KEY", "NEWAPI_API_KEY", "PRODUCT_UGC_API_KEY"],
+        default=["AI_GATEWAY_API_KEY", "UGC_API_KEY", "LLM_API_KEY", "NEWAPI_API_KEY", "PRODUCT_UGC_API_KEY"],
         help="Environment variable to read the API key from. Can be repeated.",
     )
     parser.add_argument("--api-key", help="API key. Prefer env vars for shell history safety.")
-    parser.add_argument("--base-url", default=os.getenv("UGC_API_BASE_URL") or os.getenv("LLM_API_BASE_URL") or DEFAULT_BASE_URL)
+    parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--plan-file", help="Use an existing plan JSON file.")
     parser.add_argument("--heuristic-plan", action="store_true", help="Skip planner API and build a local plan.")
     parser.add_argument("--planner-only", action="store_true", help="Stop after writing planning outputs.")
@@ -156,12 +163,11 @@ def read_description(args: argparse.Namespace) -> str:
 def get_api_key(args: argparse.Namespace) -> str:
     if args.api_key:
         return args.api_key
-    for env_name in args.api_key_env:
-        value = os.getenv(env_name)
-        if value:
-            return value
+    value = get_first_setting(args.api_key_env, skill_dir=SKILL_DIR)
+    if value:
+        return value
     raise SystemExit(
-        "API key not found. Set UGC_API_KEY/LLM_API_KEY or pass --api-key. "
+        "API key not found. Run configure_ai_gateway.py, set AI_GATEWAY_API_KEY, or pass --api-key. "
         "You can also add env names with --api-key-env."
     )
 
@@ -852,7 +858,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     description = read_description(args)
     if not args.base_url and not (args.heuristic_plan or args.plan_file):
-        raise SystemExit("Planner base URL is required. Set UGC_API_BASE_URL/LLM_API_BASE_URL or pass --base-url. Use --heuristic-plan for an offline plan.")
+        raise SystemExit(
+            "Planner base URL is required. Run configure_ai_gateway.py, set AI_GATEWAY_BASE_URL, "
+            "or pass --base-url. Use --heuristic-plan for an offline plan."
+        )
     available_models = fetch_available_models(args) if args.probe_models else []
     planner_model = resolve_model(args.planner_model, PLANNER_MODEL_CANDIDATES, available_models)
     image_candidates = (

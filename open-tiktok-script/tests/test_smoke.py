@@ -45,6 +45,7 @@ def main() -> int:
     assert analyzer.is_placeholder_value("replace_with_your_key")
     assert analyzer.is_placeholder_value("placeholder")
     assert not analyzer.is_placeholder_value("configured-value")
+    assert "AI_GATEWAY_API_KEY" in analyzer.API_KEY_ENV_VARS
 
     skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -56,6 +57,7 @@ def main() -> int:
     assert ".env" in gitignore
     assert "https://llm-api.mobvista.com" not in skill + readme
     assert "gemini-3.5-flash" not in skill + readme
+    assert "configure_ai_gateway.py" in skill + readme
 
     for script in ("download_tiktok.py", "analyze_video.py"):
         result = subprocess.run(

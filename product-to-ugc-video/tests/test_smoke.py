@@ -10,6 +10,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "product_to_ugc.py"
 
 def main() -> int:
+    skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+    assert "Do not use when the user already has an ad script" in skill
+    assert "script-to-storyboard-video" in skill
     with tempfile.TemporaryDirectory() as tmp:
         image = pathlib.Path(tmp) / "product.jpg"
         image.write_bytes(b"offline-placeholder")

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Script to Storyboard Video"
+  short_description: "Approve ad storyboards before video generation"
+  default_prompt: "Use $script-to-storyboard-video to turn this existing ad script and product image into storyboard sheets, stop for my approval, then generate vertical video after I confirm."

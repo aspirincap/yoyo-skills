@@ -2,7 +2,6 @@
 name: standard-product-image
 description: "Create standardized ecommerce product image prompts, or generate standardized product images from real product photos. Use when the user provides product photos and asks to identify the product type, standardize 商品图/白底图/电商主图/产品图, or produce prompts for phones, fans, cookware, tableware, smartwatches, massage guns, or similar generic products."
 license: MIT
-compatibility: Requires an image-capable model or image editing tool only when the user asks to generate the image; prompt-only mode has no external dependency.
 ---
 
 # Standard Product Image
@@ -10,6 +9,8 @@ compatibility: Requires an image-capable model or image editing tool only when t
 ## Overview
 
 Turn real product photos into standardized ecommerce product image prompts or generated images. The visual target is a premium white-background product image: centered, realistic, high-key lighting, true structure, no labels, no decorative scene, no infographic layout.
+
+Prompt-only mode has no external dependency. Direct image generation requires an image-capable model or image-editing tool in the current environment.
 
 ## Workflow
 

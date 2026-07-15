@@ -7,19 +7,24 @@ import argparse
 import base64
 import json
 import mimetypes
-import os
 from pathlib import Path
 import sys
 from typing import Any
 from urllib import error, request
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from ai_gateway import get_first_setting, get_setting, is_placeholder_value
 
 
 DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com"
 DEFAULT_MODEL = "gemini-2.5-flash"
 DEFAULT_MAX_INLINE_MB = 20
 SKILL_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_ENV_FILE = SKILL_DIR / ".env"
 API_KEY_ENV_VARS = (
+    "AI_GATEWAY_API_KEY",
     "GEMINI_VIDEO_API_KEY",
     "GEMINI_API_KEY",
     "GOOGLE_API_KEY",
@@ -30,37 +35,13 @@ MODEL_ALIASES = {
 }
 
 
-def is_placeholder_value(value: str) -> bool:
-    normalized = value.strip().lower()
-    return normalized in {"placeholder", "changeme", "your_key", "your-key"} or "replace_with" in normalized
-
-
-def local_env_file() -> Path:
-    return DEFAULT_ENV_FILE
-
-
-def load_local_config() -> dict[str, str]:
-    path = local_env_file()
-    if not path.exists():
-        return {}
-    values: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        if key and value and not is_placeholder_value(value):
-            values[key] = value
-    return values
-
-
-LOCAL_CONFIG = load_local_config()
-
-
-def setting(name: str, default: str | None = None) -> str | None:
-    return os.getenv(name) or LOCAL_CONFIG.get(name) or default
+def default_auth_mode() -> str:
+    configured = get_setting(
+        "AI_GATEWAY_AUTH_MODE", ("GEMINI_VIDEO_AUTH_MODE",), skill_dir=SKILL_DIR
+    )
+    if configured:
+        return configured
+    return "bearer" if get_setting("AI_GATEWAY_BASE_URL", skill_dir=SKILL_DIR) else "x-goog"
 
 
 def parse_args() -> argparse.Namespace:
@@ -76,13 +57,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mime-type", help="Override inferred local media MIME type.")
     parser.add_argument(
         "--base-url",
-        default=setting("GEMINI_VIDEO_BASE_URL", DEFAULT_BASE_URL),
+        default=get_setting(
+            "AI_GATEWAY_BASE_URL", ("GEMINI_VIDEO_BASE_URL",), default=DEFAULT_BASE_URL, skill_dir=SKILL_DIR
+        ),
         help=f"API base URL. Default: {DEFAULT_BASE_URL}",
     )
     parser.add_argument(
         "--model",
         "-m",
-        default=setting("GEMINI_VIDEO_MODEL", DEFAULT_MODEL),
+        default=get_setting(
+            "AI_VISION_MODEL", ("GEMINI_VIDEO_MODEL",), default=DEFAULT_MODEL, skill_dir=SKILL_DIR
+        ),
         help=(
             "Gemini model or compatibility alias. "
             f"'flash' maps to {DEFAULT_MODEL}. Default: {DEFAULT_MODEL}"
@@ -113,15 +98,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--auth-mode",
         choices=("both", "x-goog", "bearer"),
-        default=setting("GEMINI_VIDEO_AUTH_MODE", "x-goog"),
-        help="Authentication header mode. Default: x-goog.",
+        default=default_auth_mode(),
+        help="Authentication header mode. Defaults to bearer for AI_GATEWAY, otherwise x-goog.",
     )
     parser.add_argument(
         "--max-inline-mb",
         "--inline-limit-mb",
         dest="max_inline_mb",
         type=float,
-        default=float(setting("GEMINI_VIDEO_MAX_INLINE_MB", str(DEFAULT_MAX_INLINE_MB))),
+        default=float(
+            get_setting(
+                "AI_GATEWAY_MAX_INLINE_MB",
+                ("GEMINI_VIDEO_MAX_INLINE_MB",),
+                default=str(DEFAULT_MAX_INLINE_MB),
+                skill_dir=SKILL_DIR,
+            )
+        ),
         help="Safety limit for local inline base64 media size in MB. Default: 20.",
     )
     parser.add_argument(
@@ -139,7 +131,7 @@ def normalize_base_url(base_url: str) -> str:
 
 def normalize_model(model: str) -> str:
     if model == "pro":
-        configured = setting("GEMINI_VIDEO_PRO_MODEL")
+        configured = get_setting("GEMINI_VIDEO_PRO_MODEL", skill_dir=SKILL_DIR)
         if configured:
             return configured
         raise SystemExit(
@@ -151,11 +143,12 @@ def normalize_model(model: str) -> str:
 
 def get_api_key(names_csv: str) -> str:
     names = [item.strip() for item in names_csv.split(",") if item.strip()]
-    for name in names:
-        value = os.getenv(name) or LOCAL_CONFIG.get(name)
-        if value:
-            return value
-    raise SystemExit(f"Missing API key. Set one of {', '.join(names)} in the shell or {local_env_file()}")
+    value = get_first_setting(names, skill_dir=SKILL_DIR)
+    if value:
+        return value
+    raise SystemExit(
+        "Missing API key. Run configure_ai_gateway.py or set one of " + ", ".join(names)
+    )
 
 
 def is_url(value: str) -> bool:

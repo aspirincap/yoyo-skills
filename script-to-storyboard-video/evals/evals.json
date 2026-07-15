@@ -1,5 +1,5 @@
 {
-  "skill_name": "ad-storyboard-seedance",
+  "skill_name": "script-to-storyboard-video",
   "evals": [
     {
       "id": 1,
@@ -11,6 +11,12 @@
       "id": 2,
       "prompt": "故事版可以，继续用Seedance生成视频，要竖版、有声音、不要fast模型。",
       "expected_output": "The assistant should run the video stage with --confirmed, non-fast Seedance, 9:16, audio enabled, then verify output with ffprobe.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "我只有产品图，想先设计一个稳定创作者人设，再做连续关键帧 UGC。",
+      "expected_output": "The assistant should route this character-led continuity request to product-to-ugc-video instead of the storyboard-first skill.",
       "files": []
     }
   ]

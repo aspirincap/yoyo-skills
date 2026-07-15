@@ -33,7 +33,7 @@
 | 🎙️ [**open-tiktok-script（海外 TikTok 脚本）**](#-open-tiktok-script海外-tiktok-脚本) | 从公共竞品视频拆解到 creator-native 脚本、分镜、Creator Brief 和广告安全审校 |
 | 📦 [**standard-product-image（标准商品图）**](#-standard-product-image标准商品图) | 把实拍产品图整理成结构真实、平台友好的电商白底商品图或提示词 |
 | 🎯 [**ad-campaign-workflow（广告投放工作流）**](#-ad-campaign-workflow广告投放工作流) | 从产品 URL 到 Meta/TikTok 完整投放策略包：受众、素材、文案、出价一把出 |
-| 🎬 [**ad-storyboard-seedance（广告故事板转视频）**](#-ad-storyboard-seedance广告故事板转视频) | 先生成故事板并人工确认，再通过可配置的 Seedance 服务生成竖版广告视频 |
+| 🎬 [**script-to-storyboard-video（脚本转故事板视频）**](#-script-to-storyboard-video脚本转故事板视频) | 已有广告脚本时先生成故事板并人工确认，再生成竖版广告视频 |
 | 📱 [**product-to-ugc-video（产品转 UGC 视频）**](#-product-to-ugc-video产品转-ugc-视频) | 从产品图规划稳定创作者、连续关键帧和可恢复的 UGC 视频片段 |
 
 ---
@@ -57,6 +57,18 @@ git clone https://github.com/aspirincap/yoyo-skills.git ~/.claude/skills/
 # Codex
 git clone https://github.com/aspirincap/yoyo-skills.git ~/.codex/skills/
 ```
+
+---
+
+## 🔌 AI 网关：只配置一次
+
+四个 AI 调用型 Skill 支持任意 NewAPI-compatible 网关，并共享供应商中立的 `AI_GATEWAY_*` 配置：
+
+```bash
+python3 shared/ai-gateway/configure_ai_gateway.py
+```
+
+配置安全写入 `~/.config/ai-gateway/config.env`，供 `product-creative-scraper`、`open-tiktok-script`、`script-to-storyboard-video` 和 `product-to-ugc-video` 共用。详情见 [AI_GATEWAY.md](./AI_GATEWAY.md)。
 
 ---
 
@@ -269,7 +281,7 @@ python3 scripts/sync_lark_base.py --scrape-json scrape.json --analysis-json anal
 ```bash
 pip install requests Pillow openpyxl
 # AI 分析需要
-export GEMINI_API_KEY="your-key"
+python3 scripts/configure_ai_gateway.py
 ```
 
 **🌐 跨平台**：Claude Code · Codex
@@ -282,11 +294,13 @@ export GEMINI_API_KEY="your-key"
 <table>
 <tr><td>
 
-### 🎬 ad-storyboard-seedance（广告故事板转视频）
+### 🎬 script-to-storyboard-video（脚本转故事板视频）
 
 > *"视频生成成本高，先把脚本和产品图变成故事板，确认没问题再生成。"*
 
-两阶段广告视频工作流：先按脚本和产品图生成故事板，停下来等待人工确认，再调用用户配置的 OpenAI-compatible 图片接口与 Seedance 视频接口生成 9:16 片段。
+面向“已经有广告脚本”的两阶段视频工作流：先按脚本和产品图生成故事板，停下来等待人工确认，再通过用户配置的 NewAPI-compatible 图片与视频接口生成 9:16 片段。需要创作者人设和连续关键帧时应选择 `product-to-ugc-video`。
+
+> 原 `ad-storyboard-seedance` 已更名；已有安装请改用目录和 Skill 名 `script-to-storyboard-video`。
 
 **核心能力**
 
@@ -299,13 +313,12 @@ export GEMINI_API_KEY="your-key"
 **配置**
 
 ```bash
-cp .env.example .env
-# 填写 AD_STORYBOARD_BASE_URL、图片/视频模型 ID 和 API Key
+python3 scripts/configure_ai_gateway.py
 ```
 
 **🌐 跨平台**：Claude Code · Codex
 
-→ [SKILL.md](./ad-storyboard-seedance/SKILL.md)
+→ [SKILL.md](./script-to-storyboard-video/SKILL.md)
 
 </td></tr>
 </table>
@@ -403,7 +416,7 @@ python3 scripts/product_to_ugc.py \
 
 ## 🔗 选品→创意→投放完整链路
 
-这六个 Skill 可以串联使用，覆盖跨境电商从选品到创意生产的完整流程：
+这八个 Skill 可以串联使用，覆盖跨境电商从选品到创意生产的完整流程：
 
 ```
 yiwugo-product-sourcing     →  找到货源，拿到价格/MOQ/供应商
@@ -414,9 +427,9 @@ standard-product-image      →  将实拍素材标准化为电商商品图
         ↓
 ad-campaign-workflow        →  输出 Meta/TikTok 完整投放策略包
         ↓
-ad-storyboard-seedance      →  生成并确认广告故事板
+script-to-storyboard-video  →  已有脚本时生成并确认广告故事板
         ↓
-product-to-ugc-video        →  生成角色一致的 UGC 视频项目
+product-to-ugc-video        →  需要创作者连续性时生成 UGC 视频项目
 ```
 
 ---

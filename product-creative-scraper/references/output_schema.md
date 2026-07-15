@@ -55,19 +55,21 @@ Environment:
 
 | Name | Meaning |
 |---|---|
-| `GEMINI_API_KEY` | Required unless `--mock` is used |
-| `GEMINI_VLM_MODEL` | Optional, defaults to `gemini-2.5-flash` |
-| `GEMINI_BASE_URL` | Optional OpenAI-compatible base URL |
+| `AI_GATEWAY_API_KEY` | Required unless `--mock` is used |
+| `AI_VISION_MODEL` | Optional, defaults to `gemini-2.5-flash` |
+| `AI_GATEWAY_BASE_URL` | Optional NewAPI-compatible base URL |
 
 The analyzer expands each product into image asset rows, downloads the remote image temporarily, sends a single image per request to Gemini, and preserves failed image rows with `analysis_status=error`.
 
 When `--image-cache-dir <dir>` is provided, the downloaded image is also saved locally and emitted as `image_cache_path`. Pass the resulting analysis JSON to `upload_preview_attachments.py --analysis-json ...` so Feishu attachment upload reuses those files instead of downloading the same image a second time. In `--mock` mode, `--image-cache-dir` still caches images while skipping model calls.
 
-When `GEMINI_BASE_URL` is set, requests are sent to:
+When `AI_GATEWAY_BASE_URL` is set, requests are sent to:
 
 ```text
-{GEMINI_BASE_URL}/v1/chat/completions
+{AI_GATEWAY_BASE_URL}/v1/chat/completions
 ```
+
+Legacy `GEMINI_API_KEY`, `GEMINI_VLM_MODEL`, and `GEMINI_BASE_URL` values remain supported.
 
 ## Lightweight Summary
 
