@@ -4,9 +4,9 @@
 
 ## 样本1：美妆底妆（TikTok Shop）
 
-**品类**：美妆/底妆  
-**时长**：约28秒  
-**钩子类型**：POV + 场景痛点  
+**品类**：美妆/底妆<br>
+**时长**：约28秒<br>
+**钩子类型**：POV + 场景痛点<br>
 **风格标注**：镜前口播、半边脸演示、自然CTA
 
 ```text
@@ -37,9 +37,9 @@ I put the one I'm wearing there.
 
 ## 样本2：家居收纳（Organic / TikTok Shop）
 
-**品类**：家居/收纳  
-**时长**：约24秒  
-**钩子类型**：messy before + satisfying demo  
+**品类**：家居/收纳<br>
+**时长**：约24秒<br>
+**钩子类型**：messy before + satisfying demo<br>
 **风格标注**：俯拍、手部动作、ASMR感
 
 ```text
@@ -67,9 +67,9 @@ this is in the product card.
 
 ## 样本3：营养补充/日常习惯（Organic）
 
-**品类**：营养补充/健康习惯  
-**时长**：约30秒  
-**钩子类型**：routine + 个人体验  
+**品类**：营养补充/健康习惯<br>
+**时长**：约30秒<br>
+**钩子类型**：routine + 个人体验<br>
 **风格标注**：保守功效、生活化表达、低风险
 
 ```text
@@ -100,9 +100,9 @@ if you want to try it.
 
 ## 样本4：清洁工具（Paid In-Feed / Spark Ads）
 
-**品类**：清洁/工具  
-**时长**：约18秒  
-**钩子类型**：demo-first  
+**品类**：清洁/工具<br>
+**时长**：约18秒<br>
+**钩子类型**：demo-first<br>
 **风格标注**：快节奏、单一卖点、适合投放
 
 ```text
@@ -131,9 +131,9 @@ Tap to shop.
 
 ## 样本5：穿搭单品（Creator Brief风格）
 
-**品类**：时尚/穿搭  
-**时长**：约25秒  
-**钩子类型**：fit problem + try-on montage  
+**品类**：时尚/穿搭<br>
+**时长**：约25秒<br>
+**钩子类型**：fit problem + try-on montage<br>
 **风格标注**：多场景试穿、尺码建议、避免身材羞辱
 
 ```text
