@@ -1,0 +1,4 @@
+interface:
+  display_name: "Open TikTok Script"
+  short_description: "Turn TikTok evidence into creator-native scripts"
+  default_prompt: "Use $open-tiktok-script to analyze public TikTok references or start from product facts, then create an original creator-native script, storyboard, Creator Brief, and advertising-safety review for the target market."

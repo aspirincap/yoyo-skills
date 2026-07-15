@@ -7,7 +7,7 @@
 #### 跨境电商广告投放 & 选品常用 AI 技能集，都开源在这里
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-7-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-8-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -15,7 +15,7 @@
 
 </div>
 
-覆盖跨境电商从 **商品选品 → 竞品素材分析 → 社交趋势研究 → 商品图标准化 → 广告策略 → 故事板 → UGC 视频** 的完整链路。
+覆盖跨境电商从 **商品选品 → 竞品素材分析 → 社交趋势研究 → TikTok 脚本 → 商品图标准化 → 广告策略 → 故事板 → UGC 视频** 的完整链路。
 
 - **Skills** — Agent 能直接加载的结构化指令集，遵循 [Agent Skills](https://agentskills.io) 开放标准。Claude Code、Codex 都能装
 
@@ -30,6 +30,7 @@
 | 🛒 [**yiwugo-product-sourcing（义乌购选品）**](#-yiwugo-product-sourcing义乌购选品) | API-first 义乌购选品，不打开浏览器就能完成从关键词搜索到货源短名单的全流程 |
 | 🔍 [**product-creative-scraper（产品素材抓取分析）**](#-product-creative-scraper产品素材抓取分析) | 从产品链接批量抓取商品图和卖点，输出飞书多维表格 |
 | 📈 [**trend-to-creative-brief（趋势转广告创意）**](#-trend-to-creative-brief趋势转广告创意) | 直接检索近期公共 TikTok/Instagram 帖子，把有日期、有来源的趋势证据转成原创广告测试方案 |
+| 🎙️ [**open-tiktok-script（海外 TikTok 脚本）**](#-open-tiktok-script海外-tiktok-脚本) | 从公共竞品视频拆解到 creator-native 脚本、分镜、Creator Brief 和广告安全审校 |
 | 📦 [**standard-product-image（标准商品图）**](#-standard-product-image标准商品图) | 把实拍产品图整理成结构真实、平台友好的电商白底商品图或提示词 |
 | 🎯 [**ad-campaign-workflow（广告投放工作流）**](#-ad-campaign-workflow广告投放工作流) | 从产品 URL 到 Meta/TikTok 完整投放策略包：受众、素材、文案、出价一把出 |
 | 🎬 [**ad-storyboard-seedance（广告故事板转视频）**](#-ad-storyboard-seedance广告故事板转视频) | 先生成故事板并人工确认，再通过可配置的 Seedance 服务生成竖版广告视频 |
@@ -148,6 +149,42 @@ pip install openpyxl Pillow requests
 **🌐 跨平台**：Claude Code · Codex（需支持 MCP）
 
 → [SKILL.md](./trend-to-creative-brief/SKILL.md) · [README](./trend-to-creative-brief/README.md) · [UnifAPI MCP 安装](https://unifapi.com/zh/mcp)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 🎙️ open-tiktok-script（海外 TikTok 脚本）
+
+> *"不是把中文带货话术翻成英文——而是从公开竞品证据中提炼机制，写成创作者真的会说、品牌可以投放的 TikTok 内容。"*
+
+收集最多 5 个公共 TikTok 对标视频，用可配置的 Gemini-compatible 服务拆解钩子、节奏、演示和转化机制，再生成原创的 Organic、TikTok Shop、Spark Ads、Paid In-Feed 脚本、分镜与 Creator Brief。
+
+**核心能力**
+
+- **竞品视频拆解**：下载公开 TikTok 视频，分析钩子、分镜、节奏、卖点与 CTA
+- **Creator-native 写作**：生成自然英文口语，避免电视购物式硬广和中文话术直译
+- **多种投放格式**：支持 Organic、TikTok Shop、Spark Ads、Paid In-Feed 与 Creator Brief
+- **安全审校**：检查广告声明、版权、身体焦虑、保护群体与文化语境风险
+- **可配置视频分析**：默认 Google Gemini，也可使用 HTTP/HTTPS Gemini-compatible 网关
+
+**灵感与署名**
+
+六步工作流和参考库组织灵感来自花叔（[`alchaincyf`](https://github.com/alchaincyf)）的 [`huashu-douyin-script`](https://github.com/alchaincyf/huashu-skills/tree/master/huashu-douyin-script)，本项目已确认获得公开发布授权并保留署名。
+
+**怎么触发**
+
+```text
+拆解这三个 TikTok 竞品视频，给我的跑步腰包写一条 TikTok Shop 脚本
+根据产品卖点写 30 秒 creator-native UGC 脚本和逐镜分镜
+把这个 Organic TikTok 改成可投放的 Spark Ads Creator Brief
+```
+
+**🌐 跨平台**：Claude Code · Codex
+
+→ [SKILL.md](./open-tiktok-script/SKILL.md) · [README](./open-tiktok-script/README.md) · [NOTICE](./open-tiktok-script/NOTICE.md)
 
 </td></tr>
 </table>

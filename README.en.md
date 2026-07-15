@@ -7,7 +7,7 @@
 #### AI skills for cross-border ecommerce ads & sourcing — all open-sourced here
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-7-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-8-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -15,7 +15,7 @@
 
 </div>
 
-Each skill is designed around practical ecommerce work. Together they cover: **product sourcing → competitor analysis → social trend research → product image standardization → ad strategy → storyboards → UGC video**.
+Each skill is designed around practical ecommerce work. Together they cover: **product sourcing → competitor analysis → social trend research → TikTok scripting → product image standardization → ad strategy → storyboards → UGC video**.
 
 - **Skills** — Structured instruction sets that agents load directly. Follows the [Agent Skills](https://agentskills.io) open standard. Works with Claude Code and Codex
 
@@ -30,6 +30,7 @@ Each skill is designed around practical ecommerce work. Together they cover: **p
 | 🛒 [**yiwugo-product-sourcing**](#-yiwugo-product-sourcing) | API-first Yiwugo sourcing — search keywords, get product cards with prices/MOQ, and export Excel/HTML reports, no browser needed |
 | 🔍 [**product-creative-scraper**](#-product-creative-scraper) | Batch scrape product images and selling points from URLs, App Store, Google Play, Shopify stores, then analyze with AI and sync to Feishu Base |
 | 📈 [**trend-to-creative-brief**](#-trend-to-creative-brief) | Directly research dated public TikTok/Instagram evidence and turn reusable mechanics into original ad tests |
+| 🎙️ [**open-tiktok-script**](#-open-tiktok-script) | Turn public competitor videos into creator-native scripts, storyboards, Creator Briefs, and advertising-safety reviews |
 | 📦 [**standard-product-image**](#-standard-product-image) | Turn real product photos into faithful, marketplace-ready white-background images or editing prompts |
 | 🎯 [**ad-campaign-workflow**](#-ad-campaign-workflow) | Turn a product URL into a complete Meta/TikTok ad strategy package — audiences, creatives, copy, and validation reports |
 | 🎬 [**ad-storyboard-seedance**](#-ad-storyboard-seedance) | Generate product-faithful storyboards, require approval, then create vertical ad clips through a configurable Seedance provider |
@@ -138,6 +139,32 @@ Live retrieval requires [UnifAPI MCP](https://unifapi.com/mcp) at `https://mcp.u
 **🌐 Cross-platform**: Claude Code · Codex with MCP support
 
 → [SKILL.md](./trend-to-creative-brief/SKILL.md) · [README](./trend-to-creative-brief/README.md) · [Install UnifAPI MCP](https://unifapi.com/mcp)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 🎙️ open-tiktok-script
+
+Collect up to five public TikTok references, analyze hooks, pacing, demonstrations, and conversion mechanics with a configurable Gemini-compatible service, then create original Organic, TikTok Shop, Spark Ads, Paid In-Feed scripts, storyboards, and Creator Briefs.
+
+**Key capabilities**
+
+- Public competitor-video download and structured creative analysis
+- Creator-native English writing instead of translated ecommerce hard-sell copy
+- Organic, TikTok Shop, Spark Ads, Paid In-Feed, and Creator Brief formats
+- Advertising-claim, copyright, body-image, protected-class, and cultural-context review
+- Google Gemini by default, with configurable HTTP or HTTPS Gemini-compatible gateways
+
+**Inspiration and attribution**
+
+The six-step workflow and reference-library structure were inspired by [`huashu-douyin-script`](https://github.com/alchaincyf/huashu-skills/tree/master/huashu-douyin-script) by 花叔 ([`alchaincyf`](https://github.com/alchaincyf)). Permission to publish this adaptation has been confirmed, and attribution is preserved.
+
+**🌐 Cross-platform**: Claude Code · Codex
+
+→ [SKILL.md](./open-tiktok-script/SKILL.md) · [README](./open-tiktok-script/README.md) · [NOTICE](./open-tiktok-script/NOTICE.md)
 
 </td></tr>
 </table>
