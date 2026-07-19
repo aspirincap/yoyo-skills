@@ -64,6 +64,8 @@ def main() -> int:
             "vision-model",
             "--image-model",
             "image-model",
+            "--image-sizes",
+            "1024x1024,1024x1536",
             "--video-model",
             "video-model",
         ]
@@ -91,6 +93,7 @@ def main() -> int:
         assert output.exists()
         assert output.stat().st_mode & 0o777 == 0o600
         assert gateway.parse_env_file(output)["AI_GATEWAY_BASE_URL"] == "http://gateway.example"
+        assert gateway.parse_env_file(output)["AI_IMAGE_SUPPORTED_SIZES"] == "1024x1024,1024x1536"
 
     sync = subprocess.run(
         [sys.executable, str(ROOT / "shared" / "sync_vendored.py"), "--check"],

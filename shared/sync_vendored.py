@@ -14,8 +14,10 @@ AI_SKILLS = (
     "open-tiktok-script",
     "script-to-storyboard-video",
     "product-to-ugc-video",
+    "product-detail-page-pipeline",
 )
 VIDEO_SKILLS = ("script-to-storyboard-video", "product-to-ugc-video")
+IMAGE_SKILLS = (*VIDEO_SKILLS, "product-detail-page-pipeline")
 
 
 def mappings() -> list[tuple[Path, Path]]:
@@ -30,13 +32,10 @@ def mappings() -> list[tuple[Path, Path]]:
                 ),
             ]
         )
+    for skill in IMAGE_SKILLS:
+        pairs.append((ROOT / "shared/media-runtime/image_tool.py", ROOT / skill / "scripts/image_tool.py"))
     for skill in VIDEO_SKILLS:
-        pairs.extend(
-            [
-                (ROOT / "shared/media-runtime/image_tool.py", ROOT / skill / "scripts/image_tool.py"),
-                (ROOT / "shared/media-runtime/generate_video.py", ROOT / skill / "scripts/generate_video.py"),
-            ]
-        )
+        pairs.append((ROOT / "shared/media-runtime/generate_video.py", ROOT / skill / "scripts/generate_video.py"))
     return pairs
 
 

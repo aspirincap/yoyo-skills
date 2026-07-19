@@ -7,7 +7,7 @@
 #### 跨境电商广告投放 & 选品常用 AI 技能集，都开源在这里
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-8-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-9-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -15,7 +15,7 @@
 
 </div>
 
-覆盖跨境电商从 **商品选品 → 竞品素材分析 → 社交趋势研究 → TikTok 脚本 → 商品图标准化 → 广告策略 → 故事板 → UGC 视频** 的完整链路。
+覆盖跨境电商从 **商品选品 → 竞品素材分析 → 社交趋势研究 → TikTok 脚本 → 商品图标准化 → 商品详情页 → 广告策略 → 故事板 → UGC 视频** 的完整链路。
 
 - **Skills** — Agent 能直接加载的结构化指令集，遵循 [Agent Skills](https://agentskills.io) 开放标准。Claude Code、Codex 都能装
 
@@ -32,6 +32,7 @@
 | 📈 [**trend-to-creative-brief（趋势转广告创意）**](#-trend-to-creative-brief趋势转广告创意) | 直接检索近期公共 TikTok/Instagram 帖子，把有日期、有来源的趋势证据转成原创广告测试方案 |
 | 🎙️ [**open-tiktok-script（海外 TikTok 脚本）**](#-open-tiktok-script海外-tiktok-脚本) | 从公共竞品视频拆解到 creator-native 脚本、分镜、Creator Brief 和广告安全审校 |
 | 📦 [**standard-product-image（标准商品图）**](#-standard-product-image标准商品图) | 把实拍产品图整理成结构真实、平台友好的电商白底商品图或提示词 |
+| 🧩 [**product-detail-page-pipeline（商品详情页流水线）**](#-product-detail-page-pipeline商品详情页流水线) | 从商品证据和买家顾虑规划多屏详情页，经逐页确认后独立生图并本地拼成长图 |
 | 🎯 [**ad-campaign-workflow（广告投放工作流）**](#-ad-campaign-workflow广告投放工作流) | 从产品 URL 到 Meta/TikTok 完整投放策略包：受众、素材、文案、出价一把出 |
 | 🎬 [**script-to-storyboard-video（脚本转故事板视频）**](#-script-to-storyboard-video脚本转故事板视频) | 已有广告脚本时先生成故事板并人工确认，再生成竖版广告视频 |
 | 📱 [**product-to-ugc-video（产品转 UGC 视频）**](#-product-to-ugc-video产品转-ugc-视频) | 从产品图规划稳定创作者、连续关键帧和可恢复的 UGC 视频片段 |
@@ -62,13 +63,13 @@ git clone https://github.com/aspirincap/yoyo-skills.git ~/.codex/skills/
 
 ## 🔌 AI 网关：只配置一次
 
-四个 AI 调用型 Skill 支持任意 NewAPI-compatible 网关，并共享供应商中立的 `AI_GATEWAY_*` 配置：
+五个 AI 调用型 Skill 支持任意 NewAPI-compatible 网关，并共享供应商中立的 `AI_GATEWAY_*` 配置：
 
 ```bash
 python3 shared/ai-gateway/configure_ai_gateway.py
 ```
 
-配置安全写入 `~/.config/ai-gateway/config.env`，供 `product-creative-scraper`、`open-tiktok-script`、`script-to-storyboard-video` 和 `product-to-ugc-video` 共用。详情见 [AI_GATEWAY.md](./AI_GATEWAY.md)。
+配置安全写入 `~/.config/ai-gateway/config.env`，供 `product-creative-scraper`、`open-tiktok-script`、`script-to-storyboard-video`、`product-to-ugc-video` 和 `product-detail-page-pipeline` 共用。详情见 [AI_GATEWAY.md](./AI_GATEWAY.md)。
 
 ---
 
@@ -229,6 +230,45 @@ pip install openpyxl Pillow requests
 **🌐 跨平台**：Claude Code · Codex
 
 → [SKILL.md](./standard-product-image/SKILL.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 🧩 product-detail-page-pipeline（商品详情页流水线）
+
+> *"先让每一屏回答一个购买问题，确认完整方案后再逐屏生图。"*
+
+从商品事实、买家顾虑和平台要求规划 Amazon A+、Shopify、TikTok Shop、淘宝/天猫等多屏详情页。技能强制展示逐页评审包，并把明确批准绑定到 Prompt Pack 哈希；每屏独立调用图片模型，最后只在本地生成 contact sheet 和长图衍生物。
+
+**核心能力**
+
+- 区分可见事实、用户提供事实和无证据声明
+- 6–10 屏买家问题驱动的内容结构与共享视觉 DNA
+- 逐页文案、证据、禁用声明、画布和引用的强制人工确认
+- 缺失引用、过期审批、重复页面和未产图结果默认阻断
+- 保留每张原始屏图，仅对装配衍生物做安全裁切和纵向拼接
+
+**怎么触发**
+
+```text
+给这款行车记录仪做美国站 6 屏详情页，先逐页给我确认
+把这套 Amazon A+ 方案改成淘宝详情长图，但每屏必须独立生成
+我已有 prompt_pack.json，先离线 dry-run，不要调用生图 API
+```
+
+**依赖**
+
+```bash
+pip install -r requirements.txt
+python3 scripts/configure_ai_gateway.py
+```
+
+**🌐 跨平台**：Claude Code · Codex
+
+→ [SKILL.md](./product-detail-page-pipeline/SKILL.md)
 
 </td></tr>
 </table>
@@ -416,7 +456,7 @@ python3 scripts/product_to_ugc.py \
 
 ## 🔗 选品→创意→投放完整链路
 
-这八个 Skill 可以串联使用，覆盖跨境电商从选品到创意生产的完整流程：
+这九个 Skill 可以串联使用，覆盖跨境电商从选品到创意生产的完整流程：
 
 ```
 yiwugo-product-sourcing     →  找到货源，拿到价格/MOQ/供应商
@@ -424,6 +464,8 @@ yiwugo-product-sourcing     →  找到货源，拿到价格/MOQ/供应商
 product-creative-scraper    →  分析竞品素材，提取卖点和风格
         ↓
 standard-product-image      →  将实拍素材标准化为电商商品图
+        ↓
+product-detail-page-pipeline →  规划、确认并生成多屏商品详情页
         ↓
 ad-campaign-workflow        →  输出 Meta/TikTok 完整投放策略包
         ↓

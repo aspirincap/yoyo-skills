@@ -7,7 +7,7 @@
 #### AI skills for cross-border ecommerce ads & sourcing — all open-sourced here
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-8-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-9-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -15,7 +15,7 @@
 
 </div>
 
-Each skill is designed around practical ecommerce work. Together they cover: **product sourcing → competitor analysis → social trend research → TikTok scripting → product image standardization → ad strategy → storyboards → UGC video**.
+Each skill is designed around practical ecommerce work. Together they cover: **product sourcing → competitor analysis → social trend research → TikTok scripting → product image standardization → product detail pages → ad strategy → storyboards → UGC video**.
 
 - **Skills** — Structured instruction sets that agents load directly. Follows the [Agent Skills](https://agentskills.io) open standard. Works with Claude Code and Codex
 
@@ -32,6 +32,7 @@ Each skill is designed around practical ecommerce work. Together they cover: **p
 | 📈 [**trend-to-creative-brief**](#-trend-to-creative-brief) | Directly research dated public TikTok/Instagram evidence and turn reusable mechanics into original ad tests |
 | 🎙️ [**open-tiktok-script**](#-open-tiktok-script) | Turn public competitor videos into creator-native scripts, storyboards, Creator Briefs, and advertising-safety reviews |
 | 📦 [**standard-product-image**](#-standard-product-image) | Turn real product photos into faithful, marketplace-ready white-background images or editing prompts |
+| 🧩 [**product-detail-page-pipeline**](#-product-detail-page-pipeline) | Plan evidence-led multi-screen detail pages, require page-by-page approval, generate screens separately, and assemble locally |
 | 🎯 [**ad-campaign-workflow**](#-ad-campaign-workflow) | Turn a product URL into a complete Meta/TikTok ad strategy package — audiences, creatives, copy, and validation reports |
 | 🎬 [**script-to-storyboard-video**](#-script-to-storyboard-video) | When an ad script already exists, generate storyboards, require approval, then create vertical ad clips |
 | 📱 [**product-to-ugc-video**](#-product-to-ugc-video) | Build a consistent creator, adjacent keyframes, recoverable segments, and merge metadata from a product image |
@@ -62,13 +63,13 @@ git clone https://github.com/aspirincap/yoyo-skills.git ~/.codex/skills/
 
 ## 🔌 Configure one AI gateway
 
-Four AI-calling skills support any NewAPI-compatible gateway through shared, provider-neutral `AI_GATEWAY_*` configuration:
+Five AI-calling skills support any NewAPI-compatible gateway through shared, provider-neutral `AI_GATEWAY_*` configuration:
 
 ```bash
 python3 shared/ai-gateway/configure_ai_gateway.py
 ```
 
-The command securely writes `~/.config/ai-gateway/config.env` for `product-creative-scraper`, `open-tiktok-script`, `script-to-storyboard-video`, and `product-to-ugc-video`. See [AI_GATEWAY.md](./AI_GATEWAY.md).
+The command securely writes `~/.config/ai-gateway/config.env` for `product-creative-scraper`, `open-tiktok-script`, `script-to-storyboard-video`, `product-to-ugc-video`, and `product-detail-page-pipeline`. See [AI_GATEWAY.md](./AI_GATEWAY.md).
 
 ---
 
@@ -196,6 +197,43 @@ Turn inconsistent supplier or phone photos into category-aware ecommerce white-b
 - Prompt-only mode with no provider dependency
 
 → [SKILL.md](./standard-product-image/SKILL.md)
+
+</td></tr>
+</table>
+
+<table>
+<tr><td>
+
+### 🧩 product-detail-page-pipeline
+
+Plan Amazon A+, Shopify, TikTok Shop, Taobao/Tmall, and other multi-screen product-detail visuals from verified product evidence, buyer concerns, and platform requirements. The workflow presents every page for review, binds explicit approval to the exact Prompt Pack, generates one complete screen per model call, and assembles derivatives locally.
+
+**Key capabilities**
+
+- Separates visible facts, supplied facts, and unsupported claims
+- Builds a buyer-question-led screen plan and shared visual system
+- Requires page-by-page review of copy, evidence, prohibited claims, canvas, and references
+- Blocks stale approvals, missing references, duplicate screens, and empty generation results
+- Preserves every original screen while creating a contact sheet and stitched long page locally
+
+**How to trigger**
+
+```text
+Create six US detail-page screens for this dash cam and show every page before generation
+Turn this Amazon A+ plan into a Taobao long page, but generate each screen separately
+I already have prompt_pack.json; run an offline dry-run without calling an image API
+```
+
+**Dependencies**
+
+```bash
+pip install -r requirements.txt
+python3 scripts/configure_ai_gateway.py
+```
+
+**🌐 Cross-platform**: Claude Code · Codex
+
+→ [SKILL.md](./product-detail-page-pipeline/SKILL.md)
 
 </td></tr>
 </table>
@@ -361,7 +399,7 @@ Platform-independent Meta and TikTok advertising workflow planner. Input a produ
 
 ## 🔗 Sourcing → Creative → Campaign Pipeline
 
-These eight skills chain together across sourcing, creative preparation, and production:
+These nine skills chain together across sourcing, creative preparation, and production:
 
 ```
 yiwugo-product-sourcing     →  Find suppliers, get prices/MOQ/vendors
@@ -369,6 +407,8 @@ yiwugo-product-sourcing     →  Find suppliers, get prices/MOQ/vendors
 product-creative-scraper    →  Analyze competitor creatives, extract selling points & styles
         ↓
 standard-product-image      →  Standardize real product photos for ecommerce
+        ↓
+product-detail-page-pipeline →  Plan, approve, and generate multi-screen detail pages
         ↓
 ad-campaign-workflow        →  Generate complete Meta/TikTok ad strategy package
         ↓

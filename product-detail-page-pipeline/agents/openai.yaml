@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Detail Page Pipeline"
+  short_description: "Review, approve, then generate product detail pages"
+  default_prompt: "Use $product-detail-page-pipeline to plan and show every product-detail page for my review, wait for my explicit approval, then generate separate screens and stitch them locally."

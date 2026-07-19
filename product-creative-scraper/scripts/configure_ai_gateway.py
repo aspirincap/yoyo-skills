@@ -18,6 +18,7 @@ FIELDS = (
     "AI_TEXT_MODEL",
     "AI_VISION_MODEL",
     "AI_IMAGE_MODEL",
+    "AI_IMAGE_SUPPORTED_SIZES",
     "AI_VIDEO_MODEL",
 )
 
@@ -29,6 +30,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--text-model")
     p.add_argument("--vision-model")
     p.add_argument("--image-model")
+    p.add_argument("--image-sizes", help="Comma-separated sizes supported by the selected image model.")
     p.add_argument("--video-model")
     p.add_argument("--check", action="store_true", help="Show sanitized configuration status.")
     p.add_argument("--dry-run", action="store_true", help="Validate inputs without writing the token or file.")
@@ -71,6 +73,8 @@ def main() -> int:
         "AI_TEXT_MODEL": args.text_model or prompt("Text model", existing.get("AI_TEXT_MODEL", "")),
         "AI_VISION_MODEL": args.vision_model or prompt("Vision model", existing.get("AI_VISION_MODEL", "")),
         "AI_IMAGE_MODEL": args.image_model or prompt("Image model", existing.get("AI_IMAGE_MODEL", "")),
+        "AI_IMAGE_SUPPORTED_SIZES": args.image_sizes
+        or existing.get("AI_IMAGE_SUPPORTED_SIZES", "1024x1024,1024x1536,1536x1024"),
         "AI_VIDEO_MODEL": args.video_model or prompt("Video model", existing.get("AI_VIDEO_MODEL", "")),
     }
     if not base_url or not api_key:

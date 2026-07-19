@@ -32,6 +32,7 @@ AI_GATEWAY_API_KEY=your-model-api-token
 AI_TEXT_MODEL=your-text-model
 AI_VISION_MODEL=your-vision-model
 AI_IMAGE_MODEL=your-image-model
+AI_IMAGE_SUPPORTED_SIZES=1024x1024,1024x1536,1536x1024
 AI_VIDEO_MODEL=your-video-model
 ```
 
@@ -45,6 +46,7 @@ The base URL may use HTTP or HTTPS. HTTPS uses the system's default certificate 
 - `open-tiktok-script`: vision/video understanding through `/v1beta/models/{model}:generateContent`
 - `script-to-storyboard-video`: image generation plus asynchronous video generation
 - `product-to-ugc-video`: text planning, image generation, and asynchronous video generation
+- `product-detail-page-pipeline`: per-screen image generation with approval-gated local assembly
 
 Gateway implementations vary. A gateway that exposes only chat models cannot provide image or video generation merely because it accepts NewAPI-style authentication.
 

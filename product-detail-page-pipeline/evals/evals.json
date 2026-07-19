@@ -1,0 +1,41 @@
+{
+  "skill_name": "product-detail-page-pipeline",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我有一款低糖即食燕麦杯，要做淘宝详情页 8 张图。先区分可见事实和我提供的产品信息，再把卖点翻译成买家顾虑，每一屏只解决一个问题。",
+      "expected_output": "Produces product evidence, buyer concerns, an 8-screen plan, shared visual DNA, prompt pack and QC; unsupported nutrition claims are quarantined.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Create six Amazon A+ modules for a stainless steel bottle. Competitors use hiking scenes; use a cleaner office angle without copying them. Keep English copy low-density and evidence-led.",
+      "expected_output": "Uses adopt/improve/differentiate reasoning, Amazon-safe low-density copy, shared visual DNA and six distinct buyer questions.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "详情页原计划包含一张 1:5 超长说明屏，但生图后端只支持 1:1、4:5、3:4、2:3、9:16。请改造成可交付的多屏方案，不要拉伸产品，也不要把整张长图交给模型一次生成。",
+      "expected_output": "Uses aspect_ratio_plan.py to decompose the extreme ratio into self-contained modules, generates each module independently at a supported ratio, preserves originals, and stacks them locally without overlapping-canvas stitching.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "我已有 prompt_pack.json，但暂时没有生图 API。请离线 dry-run，生成每屏 prompt、命令和 manifest，不要因为 image_tool 未配置而失败。",
+      "expected_output": "Runs offline without a configured image tool and writes a complete generation manifest with zero provider calls.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "为美国站便携吸尘器做 8 屏英文详情页。不要一次生成长图，也不要后期叠字：每屏独立调用生图模型，并让模型直接准确呈现该屏短文案。最后本地拼成长图，同时交付 8 张原始屏图、contact sheet、长图和含哈希的 manifest。",
+      "expected_output": "Creates eight separate model calls with verbatim English copy embedded in each prompt, preserves all original screens, locally assembles derivatives without drawing text, and delivers originals plus contact sheet, stitched long page, hashes and QC.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "给这款行车记录仪做美国站 6 屏详情页。先把每一页的画面、英文文案、证据和禁用声明完整列给我确认；在我明确说开始生图前不要调用生图模型。",
+      "expected_output": "Exports and presents a complete six-page generation review, stops before provider calls, accepts page-specific revisions, and requires an explicit hash-bound approval before real generation can run.",
+      "files": []
+    }
+  ]
+}

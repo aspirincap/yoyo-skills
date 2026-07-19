@@ -61,6 +61,8 @@ DEFAULT_MODEL = gateway_model(
     skill_dir=SKILL_DIR,
 )
 DATA_URL_RE = re.compile(r"data:image/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)")
+MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024
+PROTECTED_EXTRA_FIELDS = {"model", "prompt", "messages", "modalities", "n", "size", "image", "mask"}
 
 
 class ApiError(RuntimeError):
@@ -80,6 +82,14 @@ def parse_json_arg(value: str | None, field_name: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise SystemExit(f"{field_name} must be a JSON object.")
     return parsed
+
+
+def safe_extra(value: str | None) -> dict[str, Any]:
+    extra = parse_json_arg(value, "--extra")
+    protected = sorted(PROTECTED_EXTRA_FIELDS.intersection(extra))
+    if protected:
+        raise SystemExit("--extra cannot override core request fields: " + ", ".join(protected))
+    return extra
 
 
 def read_prompt(args: argparse.Namespace) -> str:
@@ -229,7 +239,7 @@ def build_generate_payload(args: argparse.Namespace, prompt: str) -> dict[str, A
     for key, value in optional.items():
         if value is not None:
             payload[key] = value
-    payload.update(parse_json_arg(args.extra, "--extra"))
+    payload.update(safe_extra(args.extra))
     return payload
 
 
@@ -243,7 +253,7 @@ def build_chat_payload(args: argparse.Namespace, prompt: str) -> dict[str, Any]:
         payload["n"] = args.n
     if args.user:
         payload["user"] = args.user
-    payload.update(parse_json_arg(args.extra, "--extra"))
+    payload.update(safe_extra(args.extra))
     return payload
 
 
@@ -263,7 +273,7 @@ def build_edit_fields(args: argparse.Namespace, prompt: str) -> dict[str, str]:
     for key, value in optional.items():
         if value is not None:
             fields[key] = str(value)
-    for key, value in parse_json_arg(args.extra, "--extra").items():
+    for key, value in safe_extra(args.extra).items():
         fields[key] = json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else str(value)
     return fields
 
@@ -325,6 +335,26 @@ def resolve_endpoint(args: argparse.Namespace) -> str:
     return "images"
 
 
+def download_image(url: str, timeout: int) -> bytes:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise RuntimeError("Image download URLs must use HTTPS.")
+    with urllib.request.urlopen(url, timeout=timeout) as response:
+        final_url = response.geturl()
+        if urllib.parse.urlparse(final_url).scheme != "https":
+            raise RuntimeError("Image download redirects must remain on HTTPS.")
+        content_type = response.headers.get_content_type()
+        if not content_type.startswith("image/"):
+            raise RuntimeError(f"Image download returned non-image content type: {content_type}")
+        content_length = response.headers.get("Content-Length")
+        if content_length and int(content_length) > MAX_DOWNLOAD_BYTES:
+            raise RuntimeError("Image download exceeds the 50 MiB limit.")
+        payload = response.read(MAX_DOWNLOAD_BYTES + 1)
+        if len(payload) > MAX_DOWNLOAD_BYTES:
+            raise RuntimeError("Image download exceeds the 50 MiB limit.")
+        return payload
+
+
 def save_images(args: argparse.Namespace, response: dict[str, Any]) -> list[pathlib.Path]:
     chat_saved = save_chat_images(args, response)
     if chat_saved:
@@ -345,8 +375,7 @@ def save_images(args: argparse.Namespace, response: dict[str, Any]) -> list[path
         if item.get("b64_json"):
             output_path.write_bytes(base64.b64decode(item["b64_json"]))
         elif item.get("url"):
-            with urllib.request.urlopen(item["url"], timeout=args.download_timeout) as resp:
-                output_path.write_bytes(resp.read())
+            output_path.write_bytes(download_image(item["url"], args.download_timeout))
         else:
             raise RuntimeError(f"Image item has neither b64_json nor url: {item}")
 
@@ -504,6 +533,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(preview, ensure_ascii=False, indent=2))
         save_response_json(args.save_json, response)
         saved_paths = save_images(args, response)
+        if not saved_paths:
+            raise RuntimeError("The image API returned no saved image artifacts.")
         for path in saved_paths:
             print(f"saved={path}")
             print(f"bytes={path.stat().st_size}")
