@@ -7,7 +7,7 @@
 #### AI skills for cross-border ecommerce ads & sourcing — all open-sourced here
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-9-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-10-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -416,6 +416,14 @@ script-to-storyboard-video  →  Generate and approve storyboards from an existi
         ↓
 product-to-ugc-video        →  Produce UGC when creator continuity is required
 ```
+
+---
+
+### 🔎 research-serp-keywords (SERP keyword research)
+
+Uses live or exported SERP evidence only to expand PAA/related queries, cluster by ranking-page overlap, score SERP attainability, and produce auditable Excel and offline HTML reports. It does not use search volume, CPC, KD, GSC, or traffic databases.
+
+→ [SKILL.md](./research-serp-keywords/SKILL.md)
 
 ---
 

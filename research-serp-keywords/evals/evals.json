@@ -1,0 +1,7 @@
+{
+  "skill": "research-serp-keywords",
+  "cases": [
+    {"name": "offline_fixture", "prompt": "Use the supplied normalized SERP fixture to produce Excel and HTML reports; do not call live APIs.", "checks": ["xlsx", "html", "formula_allowlist", "escaped_html"]},
+    {"name": "serp_only", "prompt": "Research these seed queries using SERP evidence only and mark un fetched discoveries as discovered_only.", "checks": ["no_search_volume", "provenance", "unscored_discoveries"]}
+  ]
+}

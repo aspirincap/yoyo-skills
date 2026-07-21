@@ -1,0 +1,4 @@
+interface:
+  display_name: "SERP Keyword Research"
+  short_description: "Turn live SERPs into keyword opportunities and reports"
+  default_prompt: "Use $research-serp-keywords to research my seed keywords from SERP data and generate Excel and HTML reports."

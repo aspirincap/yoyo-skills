@@ -7,7 +7,7 @@
 #### 跨境电商广告投放 & 选品常用 AI 技能集，都开源在这里
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-9-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-10-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -36,6 +36,7 @@
 | 🎯 [**ad-campaign-workflow（广告投放工作流）**](#-ad-campaign-workflow广告投放工作流) | 从产品 URL 到 Meta/TikTok 完整投放策略包：受众、素材、文案、出价一把出 |
 | 🎬 [**script-to-storyboard-video（脚本转故事板视频）**](#-script-to-storyboard-video脚本转故事板视频) | 已有广告脚本时先生成故事板并人工确认，再生成竖版广告视频 |
 | 📱 [**product-to-ugc-video（产品转 UGC 视频）**](#-product-to-ugc-video产品转-ugc-视频) | 从产品图规划稳定创作者、连续关键帧和可恢复的 UGC 视频片段 |
+| 🔎 [**research-serp-keywords（SERP 关键词研究）**](#-research-serp-keywordsserp-关键词研究) | 仅用 SERP 证据挖掘、聚类并生成可审计的 Excel/HTML 报告 |
 
 ---
 
@@ -454,14 +455,24 @@ python3 scripts/product_to_ugc.py \
 
 ---
 
+### 🔎 research-serp-keywords（SERP 关键词研究）
+
+只基于 live 或导出的 SERP 证据扩展 PAA/related queries、按排名页重叠聚类并计算 `serp_opportunity_score`，输出可审计的 Excel 与离线 HTML。不会调用搜索量、CPC、KD、GSC 或流量数据库。
+
+→ [SKILL.md](./research-serp-keywords/SKILL.md)
+
+---
+
 ## 🔗 选品→创意→投放完整链路
 
-这九个 Skill 可以串联使用，覆盖跨境电商从选品到创意生产的完整流程：
+这十个 Skill 可以串联使用，覆盖跨境电商从选品到创意生产的完整流程：
 
 ```
 yiwugo-product-sourcing     →  找到货源，拿到价格/MOQ/供应商
         ↓
 product-creative-scraper    →  分析竞品素材，提取卖点和风格
+        ↓
+research-serp-keywords      →  用 SERP 证据研究关键词机会与内容意图
         ↓
 standard-product-image      →  将实拍素材标准化为电商商品图
         ↓
