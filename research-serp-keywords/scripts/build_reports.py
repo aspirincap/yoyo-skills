@@ -182,7 +182,9 @@ def build_workbook(report: dict[str, Any], output_path: Path) -> None:
 def html_table(headers: list[str], rows: list[list[Any]]) -> str:
     head = "".join(f"<th>{escape(item)}</th>" for item in headers)
     body = "".join("<tr>" + "".join(f"<td>{escape(item)}</td>" for item in row) + "</tr>" for row in rows)
-    return f"<table><thead><tr>{head}</tr></thead><tbody>{body or '<tr><td colspan="' + str(len(headers)) + '">No data</td></tr>'}</tbody></table>"
+    if not body:
+        body = '<tr><td colspan="' + str(len(headers)) + '">No data</td></tr>'
+    return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
 
 
 def build_html(report: dict[str, Any], template_path: Path, output_path: Path, workbook_name: str) -> None:
