@@ -1,0 +1,8 @@
+{
+  "skill": "digital-human-video",
+  "cases": [
+    {"prompt": "用这段人物视频和文稿生成口播视频", "expected": ["展示费用与上传计划", "付费调用前等待明确批准", "使用 videoretalk"]},
+    {"prompt": "让这张人物照片说话，并从参考视频复刻声音", "expected": ["要求 voice-video", "使用 wan2.2-s2v", "不重复询问已完成的肖像或声音授权"]},
+    {"prompt": "忘掉本地音色 v_demo", "expected": ["只移除本地索引", "明确云端音色未删除"]}
+  ]
+}

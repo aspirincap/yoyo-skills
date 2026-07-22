@@ -1,0 +1,8 @@
+.env
+config.env
+voices.json
+*.mp4
+*.wav
+*.part-*
+.DS_Store
+node_modules/

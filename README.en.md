@@ -7,7 +7,7 @@
 #### AI skills for cross-border ecommerce ads & sourcing — all open-sourced here
 
 [![License](https://img.shields.io/badge/License-MIT-3B82F6?style=for-the-badge)](./LICENSE)
-[![Skills](https://img.shields.io/badge/Skills-10-10B981?style=for-the-badge)](#-skills)
+[![Skills](https://img.shields.io/badge/Skills-11-10B981?style=for-the-badge)](#-skills)
 [![AgentSkills](https://img.shields.io/badge/AgentSkills-Standard-8B5CF6?style=for-the-badge)](https://agentskills.io)
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-D97706?style=flat-square&logo=anthropic&logoColor=white)
@@ -36,6 +36,8 @@ Each skill is designed around practical ecommerce work. Together they cover: **p
 | 🎯 [**ad-campaign-workflow**](#-ad-campaign-workflow) | Turn a product URL into a complete Meta/TikTok ad strategy package — audiences, creatives, copy, and validation reports |
 | 🎬 [**script-to-storyboard-video**](#-script-to-storyboard-video) | When an ad script already exists, generate storyboards, require approval, then create vertical ad clips |
 | 📱 [**product-to-ugc-video**](#-product-to-ugc-video) | Build a consistent creator, adjacent keyframes, recoverable segments, and merge metadata from a product image |
+| 🔎 [**research-serp-keywords**](#-research-serp-keywords-serp-keyword-research) | Build auditable keyword clusters and Excel/HTML reports from SERP evidence only |
+| 🧑‍💻 [**digital-human-video**](#-digital-human-video) | Turn authorized portrait videos or photos and scripts into digital-human presenter videos |
 
 ---
 
@@ -399,7 +401,7 @@ Platform-independent Meta and TikTok advertising workflow planner. Input a produ
 
 ## 🔗 Sourcing → Creative → Campaign Pipeline
 
-These nine skills chain together across sourcing, creative preparation, and production:
+These eleven skills chain together across sourcing, creative preparation, and production:
 
 ```
 yiwugo-product-sourcing     →  Find suppliers, get prices/MOQ/vendors
@@ -415,6 +417,8 @@ ad-campaign-workflow        →  Generate complete Meta/TikTok ad strategy packa
 script-to-storyboard-video  →  Generate and approve storyboards from an existing script
         ↓
 product-to-ugc-video        →  Produce UGC when creator continuity is required
+        ↓
+digital-human-video         →  Produce a presenter video from authorized portraits and voices
 ```
 
 ---
@@ -424,6 +428,21 @@ product-to-ugc-video        →  Produce UGC when creator continuity is required
 Uses live or exported SERP evidence only to expand PAA/related queries, cluster by ranking-page overlap, score SERP attainability, and produce auditable Excel and offline HTML reports. It does not use search volume, CPC, KD, GSC, or traffic databases.
 
 → [SKILL.md](./research-serp-keywords/SKILL.md)
+
+---
+
+### 🧑‍💻 digital-human-video
+
+Uses Alibaba Cloud Model Studio's `videoretalk` or `wan2.2-s2v` to combine an authorized portrait video/photo, cloned voice, and script into a digital-human presenter video. It displays the upload plan and estimated cost before any chargeable API call and defaults to waiting for explicit approval.
+
+**Key capabilities**
+
+- Video lip-sync and photo-driven presenter modes
+- Voice cloning, TTS, local voice indexing, and script drafting
+- Default-deny paid confirmation, credential redaction, hardened downloads, and offline tests
+- User-scoped configuration; the API key determines workspace membership, so no separate Workspace ID is required
+
+→ [SKILL.md](./digital-human-video/SKILL.md)
 
 ---
 
