@@ -28,7 +28,7 @@ Read this file first. Only open script source if you need to debug parameters or
 
 ## MCP setup
 
-Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for authentication, local image bindings, model discovery and task recovery. Use Python 3.11+, Pillow and ffprobe. Existing Codex `aicreative-beta` configuration is reused without copying the Token. Bind local product images before generation; generated storyboards reuse returned asset IDs automatically.
+Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for authentication, local image bindings, model discovery and task recovery. Use Python 3.11+, Pillow and ffprobe. Existing Codex `aicreative` configuration is reused without copying the Token. Bind local product images before generation; generated storyboards reuse returned asset IDs automatically.
 
 ## Inputs
 

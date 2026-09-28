@@ -6,7 +6,7 @@ This branch routes `standard-product-image`, `product-detail-page-pipeline`, `sc
 
 Use Python 3.11+ and Pillow (`python3 -m pip install Pillow`). Video assembly also uses ffmpeg/ffprobe. Each of the four skills bundles its own runtime, so it can be installed individually.
 
-If Codex already has an HTTP MCP server named `aicreative-beta`, the runtime reads its URL and authentication from `~/.codex/config.toml`. It does not copy or print the Token. `AICREATIVE_MCP_SERVER` selects another server name; `AICREATIVE_CODEX_CONFIG` selects another TOML file.
+If Codex already has an HTTP MCP server named `aicreative`, the runtime reads its URL and authentication from `~/.codex/config.toml`. It does not copy or print the Token. The configured URL determines the environment (Beta or production). `AICREATIVE_MCP_SERVER` selects another server name; `AICREATIVE_CODEX_CONFIG` selects another TOML file.
 
 Outside Codex, configure these environment variables through your secret manager or shell environment:
 

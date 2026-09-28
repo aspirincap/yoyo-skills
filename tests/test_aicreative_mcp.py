@@ -48,7 +48,7 @@ class Validation(unittest.TestCase):
     def test_safe_configuration_and_urls(self):
         with tempfile.TemporaryDirectory() as tmp:
             cfg=Path(tmp)/'config.toml'
-            cfg.write_text('[mcp_servers.aicreative-beta]\nurl="https://trusted.test/api/mcp"\n[mcp_servers.aicreative-beta.http_headers]\nAuthorization="Bearer private-secret"\n')
+            cfg.write_text('[mcp_servers.aicreative]\nurl="https://trusted.test/api/mcp"\n[mcp_servers.aicreative.http_headers]\nAuthorization="Bearer private-secret"\n')
             with patch.dict(os.environ,{'AICREATIVE_CODEX_CONFIG':str(cfg)},clear=True):
                 self.assertEqual(mcp.load_config()[0],'https://trusted.test/api/mcp')
                 with self.assertRaises(mcp.MCPError):mcp.load_config('https://different.test/api/mcp')

@@ -76,13 +76,13 @@ class HTTPSRedirect(urllib.request.HTTPRedirectHandler):
 def load_config(url=None):
     # Explicit endpoint overrides never inherit credentials from another endpoint.
     config_path = Path(os.getenv("AICREATIVE_CODEX_CONFIG", str(Path.home()/".codex/config.toml")))
-    server_name = os.getenv("AICREATIVE_MCP_SERVER", "aicreative-beta")
+    server_name = os.getenv("AICREATIVE_MCP_SERVER", "aicreative")
     server = {}
     if config_path.exists():
         server = tomllib.loads(config_path.read_text()).get("mcp_servers", {}).get(server_name, {})
     endpoint = url or os.getenv("AICREATIVE_MCP_URL") or server.get("url")
     if not endpoint:
-        raise MCPError("Configure AICREATIVE_MCP_URL + AICREATIVE_MCP_TOKEN, or a Codex aicreative-beta HTTP server")
+        raise MCPError("Configure AICREATIVE_MCP_URL + AICREATIVE_MCP_TOKEN, or a Codex aicreative HTTP server")
     https_url(endpoint)
     headers = {}
     if endpoint == server.get("url"):
