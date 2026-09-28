@@ -21,67 +21,18 @@ import subprocess
 import sys
 import textwrap
 import time
-import urllib.error
-import urllib.request
 from typing import Any
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from ai_gateway import gateway_base_url, gateway_model, get_first_setting
-
+from aicreative_mcp import model_default
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
-DEFAULT_BASE_URL = gateway_base_url("UGC_API_BASE_URL", "LLM_API_BASE_URL", skill_dir=SKILL_DIR)
-DEFAULT_PLANNER_MODEL = gateway_model("text", "UGC_PLANNER_MODEL", default="auto", skill_dir=SKILL_DIR)
-DEFAULT_IMAGE_MODEL = gateway_model("image", "UGC_IMAGE_MODEL", default="auto", skill_dir=SKILL_DIR)
-DEFAULT_VIDEO_MODEL = gateway_model("video", "UGC_VIDEO_MODEL", default="auto", skill_dir=SKILL_DIR)
+DEFAULT_IMAGE_MODEL = model_default("image")
+DEFAULT_VIDEO_MODEL = model_default("video")
 DEFAULT_TRIM_TAIL_SECONDS = 0.333
-PLANNER_MODEL_CANDIDATES = [
-    "gpt-5.4-mini",
-    "gpt-5.4",
-    "gpt-5.5",
-    "gpt-5.3-codex",
-    "gpt-5.2-codex",
-    "gpt-5.1-codex",
-]
-IMAGE_MODEL_CANDIDATES = [
-    "gpt-image-2",
-    "gemini-3.1-flash-image-preview",
-    "gemini-3-pro-image-preview",
-    "wan2.7-image",
-    "wan2.7-image-pro",
-    "wan2.6-t2i",
-]
-VIDEO_MODEL_CANDIDATES = [
-    "veo-3.1-fast-generate-001",
-    "doubao-seedance-2-0-fast-260128",
-    "doubao-seedance-2-0-260128",
-    "wan2.7-i2v",
-    "wan2.6-i2v-flash",
-    "kling-v3",
-]
-SYSTEM_PROMPT = """You are a short-form UGC creative director.
-Return strict JSON only.
-
-Design a character-first UGC workflow where:
-- a single stable creator persona is established first
-- each following keyframe shows the same person in the same outfit/product
-- each frame advances the action slightly
-- adjacent frames will be used as first/last frame anchors for video generation
-
-Keep the product faithful to the supplied reference image.
-Keep actions realistic and feasible for AI image/video generation.
-Avoid unsupported claims.
-"""
-
-
-class ApiError(RuntimeError):
-    def __init__(self, status: int | str, body: Any) -> None:
-        super().__init__(f"HTTP {status}: {body}")
-        self.status = status
-        self.body = body
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -109,25 +60,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--segment-count", type=int, default=3)
     parser.add_argument("--segment-duration", type=int, default=8)
     parser.add_argument("--aspect-ratio", default="9:16")
-    parser.add_argument("--planner-model", default=DEFAULT_PLANNER_MODEL)
     parser.add_argument("--image-model", default=DEFAULT_IMAGE_MODEL)
     parser.add_argument("--video-model", default=DEFAULT_VIDEO_MODEL)
-    parser.add_argument(
-        "--probe-models",
-        action="store_true",
-        help="Inspect /v1/models and auto-select planner/image/video fallbacks.",
-    )
     parser.add_argument("--project-name")
     parser.add_argument("--project-dir")
     parser.add_argument("--output-root", default="outputs/product_to_ugc")
-    parser.add_argument(
-        "--api-key-env",
-        action="append",
-        default=["AI_GATEWAY_API_KEY", "UGC_API_KEY", "LLM_API_KEY", "NEWAPI_API_KEY", "PRODUCT_UGC_API_KEY"],
-        help="Environment variable to read the API key from. Can be repeated.",
-    )
-    parser.add_argument("--api-key", help="API key. Prefer env vars for shell history safety.")
-    parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
     parser.add_argument("--plan-file", help="Use an existing plan JSON file.")
     parser.add_argument("--heuristic-plan", action="store_true", help="Skip planner API and build a local plan.")
     parser.add_argument("--planner-only", action="store_true", help="Stop after writing planning outputs.")
@@ -137,8 +74,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--skip-merge", action="store_true")
     parser.add_argument(
         "--image-endpoint",
-        choices=["auto", "images", "chat"],
-        default="auto",
+        choices=["mcp"],
+        default="mcp",
         help="Forwarded to scripts/image_tool.py.",
     )
     parser.add_argument("--image-size", help="Override generated image size.")
@@ -160,231 +97,11 @@ def read_description(args: argparse.Namespace) -> str:
     raise SystemExit("--description or --description-file is required.")
 
 
-def get_api_key(args: argparse.Namespace) -> str:
-    if args.api_key:
-        return args.api_key
-    value = get_first_setting(args.api_key_env, skill_dir=SKILL_DIR)
-    if value:
-        return value
-    raise SystemExit(
-        "API key not found. Run configure_ai_gateway.py, set AI_GATEWAY_API_KEY, or pass --api-key. "
-        "You can also add env names with --api-key-env."
-    )
-
-
 def slugify(value: str) -> str:
     value = value.strip().lower()
     value = re.sub(r"[^a-z0-9]+", "-", value)
     value = re.sub(r"-{2,}", "-", value).strip("-")
     return value or f"ugc-{int(time.time())}"
-
-
-def parse_response(text: str) -> Any:
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        return text
-
-
-def request_json(
-    base_url: str,
-    path: str,
-    api_key: str,
-    payload: dict[str, Any],
-    timeout: int = 180,
-) -> dict[str, Any]:
-    req = urllib.request.Request(
-        base_url.rstrip("/") + path,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = parse_response(resp.read().decode("utf-8", errors="replace"))
-    except urllib.error.HTTPError as exc:
-        body = parse_response(exc.read().decode("utf-8", errors="replace"))
-        raise ApiError(exc.code, body) from exc
-    except urllib.error.URLError as exc:
-        raise ApiError("network_error", str(exc)) from exc
-    if not isinstance(data, dict):
-        raise RuntimeError(f"Expected JSON object response, got: {data!r}")
-    return data
-
-
-def fetch_available_models(args: argparse.Namespace) -> list[str]:
-    req = urllib.request.Request(
-        args.base_url.rstrip("/") + "/v1/models",
-        headers={"Authorization": f"Bearer {get_api_key(args)}"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            payload = parse_response(resp.read().decode("utf-8", errors="replace"))
-    except Exception:
-        return []
-    if not isinstance(payload, dict):
-        return []
-    items = payload.get("data")
-    if not isinstance(items, list):
-        return []
-    models = [
-        item["id"]
-        for item in items
-        if isinstance(item, dict) and isinstance(item.get("id"), str)
-    ]
-    models.sort()
-    return models
-
-
-def resolve_model(preferred: str, candidates: list[str], available_models: list[str]) -> str:
-    if preferred != "auto":
-        return preferred
-    if available_models:
-        for candidate in candidates:
-            if candidate in available_models:
-                return candidate
-    return candidates[0]
-
-
-def extract_message_text(data: dict[str, Any]) -> str:
-    choices = data.get("choices")
-    if not isinstance(choices, list) or not choices:
-        raise RuntimeError(f"Planner response missing choices: {data}")
-    message = choices[0].get("message")
-    if not isinstance(message, dict):
-        raise RuntimeError(f"Planner response missing message: {data}")
-    content = message.get("content")
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        texts: list[str] = []
-        for item in content:
-            if isinstance(item, dict) and isinstance(item.get("text"), str):
-                texts.append(item["text"])
-        if texts:
-            return "\n".join(texts)
-    raise RuntimeError(f"Planner response missing textual content: {data}")
-
-
-def parse_json_blob(text: str) -> dict[str, Any]:
-    stripped = text.strip()
-    try:
-        parsed = json.loads(stripped)
-    except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", stripped, flags=re.DOTALL)
-        if not match:
-            raise
-        parsed = json.loads(match.group(0))
-    if not isinstance(parsed, dict):
-        raise RuntimeError(f"Expected planner JSON object, got: {parsed!r}")
-    return parsed
-
-
-def planner_prompt(args: argparse.Namespace, description: str) -> str:
-    product_name = args.product_name or "Unnamed Product"
-    brand_name = args.brand_name or "Unknown Brand"
-    frame_count = args.segment_count + 1
-    total_duration = args.segment_count * args.segment_duration
-    reference_state = "provided" if args.character_reference else "not provided"
-    return textwrap.dedent(
-        f"""
-        Build a character-first product UGC plan.
-
-        Context:
-        - brand_name: {brand_name}
-        - product_name: {product_name}
-        - platform: {args.platform}
-        - language: {args.language}
-        - tone: {args.tone}
-        - target_audience: {args.target_audience}
-        - creator_gender: {args.creator_gender}
-        - creator_age_range: {args.creator_age_range}
-        - creator_style: {args.creator_style}
-        - scene_setting: {args.scene_setting}
-        - aspect_ratio: {args.aspect_ratio}
-        - character_reference: {reference_state}
-        - keyframe_count: {frame_count}
-        - segment_count: {args.segment_count}
-        - segment_duration_seconds: {args.segment_duration}
-        - total_duration_seconds: {total_duration}
-
-        Product description:
-        {description}
-
-        Return JSON with this schema:
-        {{
-          "concept_title": "short title",
-          "selected_angle": "one sentence",
-          "creator_profile": {{
-            "identity_summary": "one sentence",
-            "appearance_rules": ["array of stable face/body/wardrobe rules"],
-            "product_wear_rule": "how the product appears on the creator",
-            "scene_rule": "what stays consistent in the environment"
-          }},
-          "character_reference_prompt": "prompt for generating the stable hero character reference image",
-          "global_style": {{
-            "visual_direction": "single paragraph",
-            "continuity_rules": ["array"],
-            "motion_rules": ["array"]
-          }},
-          "frames": [
-            {{
-              "id": "frame_01",
-              "beat": "hook/demo/proof/cta",
-              "purpose": "one sentence",
-              "action_progression": "small action advance from prior moment",
-              "prompt": "prompt for generating this keyframe while preserving the same creator",
-              "voiceover": "short spoken line in {args.language}"
-            }}
-          ],
-          "segments": [
-            {{
-              "id": "segment_01",
-              "from_frame": "frame_01",
-              "to_frame": "frame_02",
-              "goal": "one sentence",
-              "video_prompt": "prompt describing motion between adjacent frames",
-              "duration_seconds": {args.segment_duration},
-              "tail_trim_seconds": {DEFAULT_TRIM_TAIL_SECONDS}
-            }}
-          ]
-        }}
-
-        Requirements:
-        - Produce exactly {frame_count} frames and exactly {args.segment_count} segments.
-        - Each frame must depict the same creator and the same product.
-        - The action should progress slightly across each frame.
-        - Voiceover lines must be concise enough for {args.segment_duration} seconds each.
-        - The time shown in props like phones can change naturally across frames when helpful.
-        - Return JSON only.
-        """
-    ).strip()
-
-
-def call_planner(args: argparse.Namespace, description: str, planner_model: str) -> dict[str, Any]:
-    prompt = planner_prompt(args, description)
-    payload = {
-        "model": planner_model,
-        "response_format": {"type": "json_object"},
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt},
-        ],
-    }
-    response = request_json(
-        args.base_url,
-        "/v1/chat/completions",
-        get_api_key(args),
-        payload,
-        timeout=180,
-    )
-    plan = parse_json_blob(extract_message_text(response))
-    plan["_planner_request"] = payload
-    plan["_planner_response"] = response
-    return plan
 
 
 def heuristic_plan(args: argparse.Namespace, description: str) -> dict[str, Any]:
@@ -554,48 +271,14 @@ def run_cli(cmd: list[str], dry_run: bool) -> dict[str, Any]:
     }
 
 
-def classify_model_error(stderr: str) -> bool:
-    lowered = stderr.lower()
-    return "model_not_found" in lowered or "no available channel for model" in lowered
-
-
-def classify_retryable_error(stderr: str) -> bool:
-    lowered = stderr.lower()
-    retryable_markers = [
-        "504 gateway time-out",
-        "502 bad gateway",
-        "503 service unavailable",
-        "network_error",
-        "timed out",
-        "timeout",
-    ]
-    return any(marker in lowered for marker in retryable_markers)
-
-
 def try_cli_candidates(
     commands: list[tuple[str, list[str]]],
     dry_run: bool,
 ) -> tuple[str, dict[str, Any]]:
-    last_result: dict[str, Any] | None = None
-    last_model = ""
-    for model_name, cmd in commands:
-        result = run_cli(cmd, dry_run)
-        if (
-            not dry_run
-            and result["returncode"] != 0
-            and classify_retryable_error(result["stderr"])
-        ):
-            time.sleep(3)
-            result = run_cli(cmd, dry_run)
-        if result["returncode"] == 0 or dry_run:
-            return model_name, result
-        last_model = model_name
-        last_result = result
-        if not classify_model_error(result["stderr"]):
-            return model_name, result
-    if last_result is None:
-        raise RuntimeError("No commands were provided for candidate execution.")
-    return last_model, last_result
+    if len(commands) != 1:
+        raise RuntimeError("Select one MCP modelConfigId; automatic model fallback is disabled.")
+    model_name, command = commands[0]
+    return model_name, run_cli(command, dry_run)
 
 
 def build_project_paths(project_dir: pathlib.Path) -> dict[str, pathlib.Path]:
@@ -630,14 +313,6 @@ def image_size_for_ratio(ratio: str) -> str:
     if ratio == "16:9":
         return "1536x1024"
     return "1024x1024"
-
-
-def dimensions_for_ratio(ratio: str) -> tuple[int, int]:
-    if ratio == "9:16":
-        return (720, 1280)
-    if ratio == "16:9":
-        return (1280, 720)
-    return (1024, 1024)
 
 
 def character_reference_output_path(paths: dict[str, pathlib.Path]) -> pathlib.Path:
@@ -701,34 +376,6 @@ def manifest_entry(command: list[str], result: dict[str, Any], expected_output: 
     }
 
 
-def build_image_generate_command(
-    args: argparse.Namespace,
-    model_name: str,
-    prompt_path: pathlib.Path,
-    output_path: pathlib.Path,
-    json_path: pathlib.Path,
-) -> list[str]:
-    return [
-        sys.executable,
-        str((pathlib.Path(__file__).parent / "image_tool.py").resolve()),
-        "generate",
-        "--model",
-        model_name,
-        "--prompt-file",
-        str(prompt_path),
-        "--endpoint",
-        args.image_endpoint,
-        "--size",
-        args.image_size or image_size_for_ratio(args.aspect_ratio),
-        "--output",
-        str(output_path),
-        "--save-json",
-        str(json_path),
-        "--timeout",
-        str(args.image_timeout),
-    ]
-
-
 def build_image_edit_command(
     args: argparse.Namespace,
     model_name: str,
@@ -771,56 +418,16 @@ def build_video_command(
     json_path: pathlib.Path,
     prompt_path: pathlib.Path,
 ) -> list[str]:
-    width, height = dimensions_for_ratio(args.aspect_ratio)
-    cmd = [
-        sys.executable,
-        str((pathlib.Path(__file__).parent / "generate_video.py").resolve()),
-        "--model",
-        model_name,
-        "--prompt-file",
-        str(prompt_path),
-        "--duration",
-        str(segment.get("duration_seconds", args.segment_duration)),
-        "--width",
-        str(width),
-        "--height",
-        str(height),
-        "--no-generate-audio",
-        "--output",
-        str(output_path),
-        "--save-json",
-        str(json_path),
-        "--poll-interval",
-        str(args.poll_interval),
-        "--max-polls",
-        str(args.max_polls),
-        "--download-timeout",
-        str(args.video_timeout),
+    return [
+        sys.executable, str(pathlib.Path(__file__).parent / "generate_video.py"),
+        "--model", model_name, "--prompt-file", str(prompt_path),
+        "--duration", str(segment.get("duration_seconds", args.segment_duration)),
+        "--ratio", args.aspect_ratio, "--no-generate-audio",
+        "--first-frame", str(from_frame), "--last-frame", str(to_frame),
+        "--output", str(output_path), "--save-json", str(json_path),
+        "--poll-interval", str(args.poll_interval), "--max-polls", str(args.max_polls),
+        "--download-timeout", str(args.video_timeout),
     ]
-    model_lower = model_name.lower()
-    if "veo" in model_lower:
-        cmd.extend([
-            "--image",
-            str(from_frame),
-            "--image-field",
-            "image",
-            "--last-frame",
-            str(to_frame),
-            "--last-frame-field",
-            "lastFrame",
-            "--last-frame-encoding",
-            "image-object",
-        ])
-    else:
-        cmd.extend([
-            "--image",
-            str(from_frame),
-            "--image",
-            str(to_frame),
-            "--image-field",
-            "content",
-        ])
-    return cmd
 
 
 def ffmpeg_available() -> bool:
@@ -857,23 +464,14 @@ def build_merge_command(segment_paths: list[pathlib.Path], concat_file: pathlib.
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     description = read_description(args)
-    if not args.base_url and not (args.heuristic_plan or args.plan_file):
-        raise SystemExit(
-            "Planner base URL is required. Run configure_ai_gateway.py, set AI_GATEWAY_BASE_URL, "
-            "or pass --base-url. Use --heuristic-plan for an offline plan."
-        )
-    available_models = fetch_available_models(args) if args.probe_models else []
-    planner_model = resolve_model(args.planner_model, PLANNER_MODEL_CANDIDATES, available_models)
-    image_candidates = (
-        [args.image_model]
-        if args.image_model != "auto"
-        else [model for model in IMAGE_MODEL_CANDIDATES if not available_models or model in available_models] or IMAGE_MODEL_CANDIDATES
-    )
-    video_candidates = (
-        [args.video_model]
-        if args.video_model != "auto"
-        else [model for model in VIDEO_MODEL_CANDIDATES if not available_models or model in available_models] or VIDEO_MODEL_CANDIDATES
-    )
+    if not (args.heuristic_plan or args.plan_file):
+        raise SystemExit("This MCP branch has no text gateway. Supply --plan-file from your agent, or --heuristic-plan for local planning.")
+    if args.heuristic_plan and args.plan_file:
+        raise SystemExit("Choose --plan-file or --heuristic-plan, not both.")
+    available_models = []
+    planner_model = "plan_file" if args.plan_file else "heuristic"
+    image_candidates = [args.image_model]
+    video_candidates = [args.video_model]
 
     product_image = ensure_file(pathlib.Path(args.product_image))
     character_reference_input = ensure_file(pathlib.Path(args.character_reference)) if args.character_reference else None
@@ -903,9 +501,6 @@ def main(argv: list[str] | None = None) -> int:
     elif args.heuristic_plan:
         planner_used = "heuristic"
         plan = heuristic_plan(args, description)
-    else:
-        planner_used = planner_model
-        plan = call_planner(args, description, planner_model)
     validate_plan(plan, args.segment_count)
     save_plan_artifacts(plan, paths, planner_used)
 

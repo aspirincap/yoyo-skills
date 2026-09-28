@@ -7,7 +7,7 @@ description: Build a complete product-detail-page image workflow from product fa
 
 Build a coherent detail-page image set as a production workflow. Start with the shopper's decision, not decoration: every screen should answer one buyer question with visible evidence.
 
-Planning works without external services. Offline generation orchestration requires Python 3.10+. Local contact-sheet and long-page assembly require Pillow. Real generation uses the bundled NewAPI-compatible image client and the shared `AI_GATEWAY_*` configuration.
+Planning works without external services. Offline generation orchestration requires Python 3.11+. Local contact-sheet and long-page assembly require Pillow. Real generation uses the bundled AI Creative MCP client. Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for configuration, local source-image bindings and recovery.
 
 ## Boundary
 
@@ -159,10 +159,10 @@ python3 scripts/run_image_generation.py \
   --dry-run
 ```
 
-Configure any NewAPI-compatible gateway once:
+Reuse the configured AI Creative MCP server and bind source references before generation:
 
 ```bash
-python3 scripts/configure_ai_gateway.py
+python3 scripts/aicreative_mcp.py check
 python3 scripts/check_image_backend.py --operation generate --operation edit --size 1024x1536
 ```
 
@@ -175,7 +175,7 @@ python3 scripts/run_image_generation.py \
   --approval-file generation_review/generation_approval.json
 ```
 
-The runner refuses real generation without a current approval file. It reads `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY` and `AI_IMAGE_MODEL`, chooses `edit` when local references resolve and `generate` otherwise, and performs a non-generating backend preflight before a real run. Its manifest records the approval, sanitized preflight, missing references, commands, return codes and expected outputs. Use `--image-tool`, `--model`, `--base-url` or `--supported-sizes` only for explicit overrides.
+The runner refuses real generation without a current approval file. It reads the configured MCP server and `AICREATIVE_IMAGE_MODEL_ID`, chooses `edit` when local references resolve and `generate` otherwise, and performs a non-generating backend preflight before a real run. Its manifest records the approval, sanitized preflight, missing references, commands, return codes and expected outputs. Use `--model` for the numeric modelConfigId. `--size` and `--supported-sizes` describe allowed canvas ratio hints, not exact output pixels; actual dimensions follow model resolution tiers. Original server bytes are preserved beside delivery PNGs as `*.original`. Do not replace the MCP tool with a gateway client.
 
 Keep reference paths relative to the Prompt Pack directory whenever possible. To authorize images outside that directory, pass their containing directory with `--reference-dir`; absolute paths in the Prompt Pack are rejected unless they resolve inside an explicitly authorized reference directory. Missing, non-image, symlinked or out-of-root references block real generation.
 

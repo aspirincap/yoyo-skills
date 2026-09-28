@@ -16,7 +16,7 @@ python3 scripts/product_to_ugc.py \
   --description-file /absolute/path/product.txt \
   --product-name "Running Shirt" \
   --platform TikTok \
-  --planner-only
+  --heuristic-plan --planner-only
 ```
 
 Dry-run full project:
@@ -44,7 +44,8 @@ python3 scripts/product_to_ugc.py \
   --platform TikTok \
   --language zh-CN \
   --segment-count 3 \
-  --segment-duration 8
+  --segment-duration 8 \
+  --plan-file /absolute/path/plan.json
 ```
 
 Use an existing character reference:
@@ -54,7 +55,8 @@ python3 scripts/product_to_ugc.py \
   --product-image /absolute/path/product.jpg \
   --character-reference /absolute/path/creator-reference.png \
   --description-file /absolute/path/product.txt \
-  --product-name "Running Shirt"
+  --product-name "Running Shirt" \
+  --plan-file /absolute/path/plan.json
 ```
 
 ## Important Flags
@@ -67,37 +69,11 @@ python3 scripts/product_to_ugc.py \
 - `--skip-merge`: do not attempt final clip concatenation
 - `--dry-run`: save manifests and commands without running generation
 
-## Video Model Compatibility
+## MCP configuration and video anchors
 
-The orchestrator calls `scripts/generate_video.py` for each segment. That script applies common compatibility fields for model names containing `veo` or `seedance`; confirm the exact request contract with your provider.
+Read [aicreative-mcp.md](aicreative-mcp.md). The image/video wrappers use numeric modelConfigId values and the configured MCP server. Adjacent frames map to `frame.firstFrame` and `frame.lastFrame`; they are not mixed with general references. The current orchestrator requests silent video and stores voiceover text for later assembly; it does not implement TTS.
 
-For both Veo and Seedance, `--duration N` is sent as:
-
-- top-level `duration: N`
-- top-level `seconds: "N"`
-- `metadata.duration: N`
-
-For Veo, it also sends:
-
-- `metadata.durationSeconds: N`
-- `metadata.aspectRatio` inferred from `--width` and `--height`
-
-For both Veo and Seedance, `--width 720 --height 1280` is mirrored into:
-
-- `metadata.ratio: "9:16"`
-- `metadata.resolution: "720p"`
-
-Use `scripts/generate_video.py --dry-run ...` to inspect the exact JSON payload before spending generation quota.
-
-## Provider setup
-
-Configure the shared gateway once before a real run:
-
-```bash
-python3 scripts/configure_ai_gateway.py
-```
-
-This configures `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY`, `AI_TEXT_MODEL`, `AI_IMAGE_MODEL`, and `AI_VIDEO_MODEL` in `~/.config/ai-gateway/config.env`. Existing `UGC_*` variables remain fallback aliases. `--heuristic-plan` avoids the planner API.
+A real run requires `--plan-file` from the calling agent or explicit `--heuristic-plan`. Use the same project directory, plan, source files and model IDs to resume task journals. Use a new project for intentional regeneration.
 
 ## Dependencies
 

@@ -29,28 +29,13 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from ai_gateway import gateway_base_url, gateway_model
-
+from aicreative_mcp import model_default
 
 IMAGE_TOOL = SCRIPT_DIR / "image_tool.py"
 VIDEO_TOOL = SCRIPT_DIR / "generate_video.py"
-
-SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_ROOT = pathlib.Path("outputs/script-to-storyboard-video")
-DEFAULT_BASE_URL = gateway_base_url(
-    "AD_STORYBOARD_BASE_URL", "IMAGE_API_BASE_URL", "VIDEO_API_BASE_URL", skill_dir=SKILL_DIR
-)
-DEFAULT_API_KEY_ENVS = (
-    "AI_GATEWAY_API_KEY,NEWAPI_API_KEY,OPENAI_API_KEY,"
-    "PRODUCT_UGC_IMAGE_API_KEY,PRODUCT_UGC_VIDEO_API_KEY,"
-    "IMAGE_API_KEY,VIDEO_API_KEY"
-)
-DEFAULT_IMAGE_MODEL = gateway_model(
-    "image", "AD_STORYBOARD_IMAGE_MODEL", default="gpt-image-1", skill_dir=SKILL_DIR
-)
-DEFAULT_VIDEO_MODEL = gateway_model(
-    "video", "AD_STORYBOARD_VIDEO_MODEL", default="seedance-model-id", skill_dir=SKILL_DIR
-)
+DEFAULT_IMAGE_MODEL = model_default("image")
+DEFAULT_VIDEO_MODEL = model_default("video")
 
 
 def slugify(value: str) -> str:
@@ -74,22 +59,18 @@ def split_segments(duration: int, segment_duration: int, count: int | None = Non
     if segment_duration <= 0 or segment_duration > 15:
         raise SystemExit("--segment-duration must be between 1 and 15 seconds.")
     total = count or math.ceil(duration / segment_duration)
-    segments: list[tuple[int, int]] = []
-    for index in range(total):
-        start = index * segment_duration
-        end = min(duration, (index + 1) * segment_duration)
-        if start >= duration:
-            break
-        segments.append((start, end))
+    if total <= 0 or duration // total < 4 or math.ceil(duration / total) > 15:
+        raise SystemExit("Use segment counts yielding 4–15 seconds per clip for the default MCP video model.")
+    base, remainder = divmod(duration, total)
+    lengths = [base + (index < remainder) for index in range(total)]
+    start = 0
+    segments = []
+    for length in lengths:
+        segments.append((start, start + length))
+        start += length
     return segments
 
 
-def api_key_env_args(value: str) -> list[str]:
-    names = [item.strip() for item in value.split(",") if item.strip()]
-    args: list[str] = []
-    for name in names:
-        args.extend(["--api-key-env", name])
-    return args
 
 
 def run_command(cmd: list[str], dry_run: bool = False) -> None:
@@ -204,15 +185,8 @@ def command_storyboard(args: argparse.Namespace) -> int:
     product_images = [str(pathlib.Path(p).expanduser().resolve()) for p in args.product_image or []]
     if not product_images:
         raise SystemExit("At least one --product-image is required for storyboards.")
-    base_url = args.base_url or "https://api.example.com"
-    if not args.dry_run and not args.base_url:
-        raise SystemExit(
-            "Gateway base URL is required. Run configure_ai_gateway.py, set AI_GATEWAY_BASE_URL, "
-            "or pass --base-url."
-        )
-
     segments = split_segments(args.duration, args.segment_duration, args.storyboard_count)
-    project_dir = make_project_dir(pathlib.Path(args.output_root), args.project_name)
+    project_dir = pathlib.Path(args.project_dir).resolve() if args.project_dir else make_project_dir(pathlib.Path(args.output_root), args.project_name)
 
     script_path = project_dir / "inputs" / "ad_script.txt"
     write_text(script_path, script_text)
@@ -252,17 +226,12 @@ def command_storyboard(args: argparse.Namespace) -> int:
             sys.executable,
             str(IMAGE_TOOL),
             "edit",
-            "--base-url",
-            base_url,
-            *api_key_env_args(args.api_key_env),
             "--model",
             args.image_model,
             "--prompt-file",
             str(prompt_path),
             "--size",
             args.storyboard_size,
-            "--quality",
-            args.image_quality,
             "--output",
             str(output_path),
             "--save-json",
@@ -311,23 +280,14 @@ def build_video_job(args: argparse.Namespace, project_dir: pathlib.Path, project
     cmd = [
         sys.executable,
         str(VIDEO_TOOL),
-        "--base-url",
-        args.base_url,
-        *api_key_env_args(args.api_key_env),
         "--model",
         args.video_model,
         "--prompt-file",
         str(prompt_path),
         "--image",
         str(segment["storyboard_image"]),
-        "--image-field",
-        "image",
         "--duration",
         str(end - start),
-        "--width",
-        str(args.width),
-        "--height",
-        str(args.height),
         "--resolution",
         args.resolution,
         "--ratio",
@@ -336,23 +296,15 @@ def build_video_job(args: argparse.Namespace, project_dir: pathlib.Path, project
         str(output_path),
         "--save-json",
         str(json_path),
-        "--initial-delay",
-        str(args.initial_delay),
         "--poll-interval",
         str(args.poll_interval),
         "--max-polls",
         str(args.max_polls),
-        "--create-timeout",
-        str(args.create_timeout),
     ]
     if args.generate_audio:
         cmd.append("--generate-audio")
     else:
         cmd.append("--no-generate-audio")
-    if args.watermark:
-        cmd.append("--watermark")
-    else:
-        cmd.append("--no-watermark")
     if args.dry_run:
         cmd.append("--dry-run")
     return cmd
@@ -361,12 +313,6 @@ def build_video_job(args: argparse.Namespace, project_dir: pathlib.Path, project
 def command_video(args: argparse.Namespace) -> int:
     if not args.confirmed and not args.dry_run:
         raise SystemExit("Refusing to generate video before approval. Re-run with --confirmed after the storyboard is approved.")
-    args.base_url = args.base_url or "https://api.example.com"
-    if not args.dry_run and not DEFAULT_BASE_URL and args.base_url == "https://api.example.com":
-        raise SystemExit(
-            "Gateway base URL is required. Run configure_ai_gateway.py, set AI_GATEWAY_BASE_URL, "
-            "or pass --base-url."
-        )
     project_dir = pathlib.Path(args.project_dir).expanduser().resolve()
     project = load_project(project_dir)
     segments = project.get("segments") or []
@@ -410,15 +356,10 @@ def build_parser() -> argparse.ArgumentParser:
     story.add_argument("--storyboard-aspect", default="16:9")
     story.add_argument("--language", default="Chinese")
     story.add_argument("--project-name")
+    story.add_argument("--project-dir", help="Use the same directory to resume existing storyboard tasks")
     story.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
-    story.add_argument(
-        "--base-url",
-        default=DEFAULT_BASE_URL,
-        help="NewAPI-compatible root URL. Defaults to AI_GATEWAY_BASE_URL, then legacy variables.",
-    )
-    story.add_argument("--api-key-env", default=DEFAULT_API_KEY_ENVS)
+
     story.add_argument("--image-model", default=DEFAULT_IMAGE_MODEL)
-    story.add_argument("--image-quality", default="high")
     story.add_argument("--storyboard-size", default="2048x1152")
     story.add_argument("--dry-run", action="store_true")
     story.set_defaults(func=command_storyboard)
@@ -427,24 +368,14 @@ def build_parser() -> argparse.ArgumentParser:
     video.add_argument("--project-dir", required=True)
     video.add_argument("--confirmed", action="store_true", help="Required for real video generation after human approval.")
     video.add_argument("--product-notes")
-    video.add_argument(
-        "--base-url",
-        default=DEFAULT_BASE_URL,
-        help="NewAPI-compatible root URL. Defaults to AI_GATEWAY_BASE_URL, then legacy variables.",
-    )
-    video.add_argument("--api-key-env", default=DEFAULT_API_KEY_ENVS)
+
     video.add_argument("--video-model", default=DEFAULT_VIDEO_MODEL)
     video.add_argument("--ratio", default="9:16")
-    video.add_argument("--width", type=int, default=720)
-    video.add_argument("--height", type=int, default=1280)
     video.add_argument("--resolution", default="720p")
     video.add_argument("--generate-audio", action=argparse.BooleanOptionalAction, default=True)
-    video.add_argument("--watermark", action=argparse.BooleanOptionalAction, default=False)
     video.add_argument("--parallel", type=int, default=2)
-    video.add_argument("--initial-delay", type=float, default=8)
     video.add_argument("--poll-interval", type=float, default=15)
     video.add_argument("--max-polls", type=int, default=40)
-    video.add_argument("--create-timeout", type=int, default=300)
     video.add_argument("--dry-run", action="store_true")
     video.set_defaults(func=command_video)
 

@@ -1,3 +1,11 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# Local credentials, cached assets and generated projects
+.env
+.env.*
+!.env.example
+outputs/
+*.mcp.json
+*.mcp.json.lock

@@ -63,15 +63,11 @@ git clone https://github.com/aspirincap/yoyo-skills.git ~/.codex/skills/
 
 ---
 
-## 🔌 Configure one AI gateway
+## 🔌 AI Creative MCP branch
 
-Five AI-calling skills support any NewAPI-compatible gateway through shared, provider-neutral `AI_GATEWAY_*` configuration:
+`standard-product-image`, `product-detail-page-pipeline`, `script-to-storyboard-video` and `product-to-ugc-video` now use **AI Creative MCP** with asset bindings, idempotent submissions and task recovery. UGC planning uses an agent-provided plan file or the explicit local heuristic. See [AICREATIVE_MCP.md](./AICREATIVE_MCP.md).
 
-```bash
-python3 shared/ai-gateway/configure_ai_gateway.py
-```
-
-The command securely writes `~/.config/ai-gateway/config.env` for `product-creative-scraper`, `open-tiktok-script`, `script-to-storyboard-video`, `product-to-ugc-video`, and `product-detail-page-pipeline`. See [AI_GATEWAY.md](./AI_GATEWAY.md).
+`product-creative-scraper` and `open-tiktok-script` retain their vision/analysis gateway. See [AI_GATEWAY.md](./AI_GATEWAY.md).
 
 ---
 
@@ -230,7 +226,7 @@ I already have prompt_pack.json; run an offline dry-run without calling an image
 
 ```bash
 pip install -r requirements.txt
-python3 scripts/configure_ai_gateway.py
+python3 scripts/aicreative_mcp.py check
 ```
 
 **🌐 Cross-platform**: Claude Code · Codex
@@ -304,7 +300,7 @@ python3 scripts/configure_ai_gateway.py
 
 ### 🎬 script-to-storyboard-video
 
-A two-stage workflow for requests that already include an ad script: generate storyboard sheets from the script and product images, stop for human approval, then create vertical clips through user-configured NewAPI-compatible image and video endpoints. Use `product-to-ugc-video` instead when creator identity and continuous keyframes are the goal.
+A two-stage workflow for requests that already include an ad script: generate storyboard sheets from the script and product images, stop for human approval, then create vertical clips through user-configured AI Creative MCP image and video endpoints. Use `product-to-ugc-video` instead when creator identity and continuous keyframes are the goal.
 
 > Formerly `ad-storyboard-seedance`; existing installations should switch to the `script-to-storyboard-video` directory and skill name.
 

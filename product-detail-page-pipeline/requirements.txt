@@ -1,1 +1,1 @@
-Pillow>=10.0  # local contact-sheet and long-page assembly only; never text overlay
+Pillow>=10.0  # image delivery encoding and local assembly

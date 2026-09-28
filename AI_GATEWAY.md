@@ -44,9 +44,8 @@ The base URL may use HTTP or HTTPS. HTTPS uses the system's default certificate 
 
 - `product-creative-scraper`: vision model through `/v1/chat/completions`
 - `open-tiktok-script`: vision/video understanding through `/v1beta/models/{model}:generateContent`
-- `script-to-storyboard-video`: image generation plus asynchronous video generation
-- `product-to-ugc-video`: text planning, image generation, and asynchronous video generation
-- `product-detail-page-pipeline`: per-screen image generation with approval-gated local assembly
+
+The four generation skills on this branch use [AI Creative MCP](AICREATIVE_MCP.md): `standard-product-image`, `product-detail-page-pipeline`, `script-to-storyboard-video` and `product-to-ugc-video`. They do not read `AI_GATEWAY_*` or use the setup above.
 
 Gateway implementations vary. A gateway that exposes only chat models cannot provide image or video generation merely because it accepts NewAPI-style authentication.
 

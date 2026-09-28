@@ -13,6 +13,7 @@ from PIL import Image
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import image_tool as image_tool_module
+from aicreative_mcp import https_url, MCPError
 
 
 def sha256(path: pathlib.Path) -> str:
@@ -25,9 +26,9 @@ def main() -> int:
     except SystemExit as exc:
         assert "cannot override core request fields" in str(exc)
     try:
-        image_tool_module.download_image("file:///etc/hosts", 1)
+        https_url("file:///etc/hosts")
         raise AssertionError("non-HTTPS image URL was accepted")
-    except RuntimeError as exc:
+    except MCPError as exc:
         assert "must use HTTPS" in str(exc)
 
     ratio = subprocess.run([
@@ -44,19 +45,19 @@ def main() -> int:
 
     gateway_check = subprocess.run([
         sys.executable, str(ROOT / "scripts" / "check_image_backend.py"),
-        "--base-url", "https://gateway.invalid", "--api-key", "test-key",
-        "--model", "image-model", "--operation", "generate",
+        "--base-url", "https://mcp.invalid/api/mcp",
+        "--model", "2102", "--operation", "generate",
         "--size", "1024x1536", "--offline",
     ], text=True, capture_output=True, check=False)
     assert gateway_check.returncode == 0, gateway_check.stderr
     gateway_status = json.loads(gateway_check.stdout)
     assert gateway_status["ok"] is True
-    assert gateway_status["api_key"] == "configured"
+    assert gateway_status["offline"] is True
 
     unsupported = subprocess.run([
         sys.executable, str(ROOT / "scripts" / "check_image_backend.py"),
-        "--base-url", "https://gateway.invalid", "--api-key", "test-key",
-        "--model", "image-model", "--size", "1024x1408", "--offline",
+        "--base-url", "https://mcp.invalid/api/mcp",
+        "--model", "2102", "--size", "1024x1408", "--offline",
     ], text=True, capture_output=True, check=False)
     assert unsupported.returncode == 1
     assert "Unsupported requested size" in unsupported.stdout
@@ -330,8 +331,8 @@ def main() -> int:
         tool_dry = subprocess.run([
             sys.executable, str(ROOT / "scripts" / "run_image_generation.py"),
             "--prompt-pack", str(pack_path), "--output-dir", str(tool_output),
-            "--image-tool-dry-run", "--model", "smoke-image-model",
-            "--base-url", "https://gateway.invalid",
+            "--image-tool-dry-run", "--model", "2102",
+            "--base-url", "https://mcp.invalid/api/mcp",
         ], text=True, capture_output=True, check=False)
         assert tool_dry.returncode == 0, tool_dry.stderr
         tool_manifest = json.loads((tool_output / "generation_manifest.json").read_text())
@@ -367,8 +368,7 @@ def main() -> int:
         assert len(assembly_manifest["derivatives"]) == 2
 
     assert not (ROOT / "scripts" / "apply_text_overlay.py").exists()
-    assert (ROOT / "scripts" / "ai_gateway.py").exists()
-    assert (ROOT / "scripts" / "configure_ai_gateway.py").exists()
+    assert (ROOT / "scripts" / "aicreative_mcp.py").exists()
     assert (ROOT / "scripts" / "image_tool.py").exists()
     assert (ROOT / "scripts" / "prepare_generation_review.py").exists()
     assert (ROOT / "scripts" / "record_generation_approval.py").exists()

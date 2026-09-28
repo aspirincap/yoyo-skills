@@ -24,7 +24,7 @@ def main() -> int:
     assert "name: script-to-storyboard-video" in skill
     assert "Do not use for creator-persona" in skill
     assert pipeline.split_segments(30, 15) == [(0, 15), (15, 30)]
-    assert pipeline.split_segments(16, 15) == [(0, 15), (15, 16)]
+    assert pipeline.split_segments(16, 15) == [(0, 8), (8, 16)]
     with tempfile.TemporaryDirectory() as tmp:
         image = pathlib.Path(tmp) / "product.png"
         image.write_bytes(b"dry-run-placeholder")

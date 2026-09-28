@@ -63,15 +63,11 @@ git clone https://github.com/aspirincap/yoyo-skills.git ~/.codex/skills/
 
 ---
 
-## 🔌 AI 网关：只配置一次
+## 🔌 AI Creative MCP branch
 
-五个 AI 调用型 Skill 支持任意 NewAPI-compatible 网关，并共享供应商中立的 `AI_GATEWAY_*` 配置：
+本分支的 `standard-product-image`、`product-detail-page-pipeline`、`script-to-storyboard-video`、`product-to-ugc-video` 使用 **AI Creative MCP**，不再使用 AI 网关。支持复用 Codex MCP 配置、素材绑定、任务幂等和断点恢复；UGC 规划由 Agent 提供计划文件或使用本地规则。安装与使用见 [AICREATIVE_MCP.md](./AICREATIVE_MCP.md)。
 
-```bash
-python3 shared/ai-gateway/configure_ai_gateway.py
-```
-
-配置安全写入 `~/.config/ai-gateway/config.env`，供 `product-creative-scraper`、`open-tiktok-script`、`script-to-storyboard-video`、`product-to-ugc-video` 和 `product-detail-page-pipeline` 共用。详情见 [AI_GATEWAY.md](./AI_GATEWAY.md)。
+`product-creative-scraper` 和 `open-tiktok-script` 的图片/视频理解仍使用原 AI 网关，配置见 [AI_GATEWAY.md](./AI_GATEWAY.md)。
 
 ---
 
@@ -265,7 +261,7 @@ pip install openpyxl Pillow requests
 
 ```bash
 pip install -r requirements.txt
-python3 scripts/configure_ai_gateway.py
+python3 scripts/aicreative_mcp.py check
 ```
 
 **🌐 跨平台**：Claude Code · Codex
@@ -340,7 +336,7 @@ python3 scripts/configure_ai_gateway.py
 
 > *"视频生成成本高，先把脚本和产品图变成故事板，确认没问题再生成。"*
 
-面向“已经有广告脚本”的两阶段视频工作流：先按脚本和产品图生成故事板，停下来等待人工确认，再通过用户配置的 NewAPI-compatible 图片与视频接口生成 9:16 片段。需要创作者人设和连续关键帧时应选择 `product-to-ugc-video`。
+面向“已经有广告脚本”的两阶段视频工作流：先按脚本和产品图生成故事板，停下来等待人工确认，再通过用户配置的 AI Creative MCP 图片与视频接口生成 9:16 片段。需要创作者人设和连续关键帧时应选择 `product-to-ugc-video`。
 
 > 原 `ad-storyboard-seedance` 已更名；已有安装请改用目录和 Skill 名 `script-to-storyboard-video`。
 
@@ -355,7 +351,7 @@ python3 scripts/configure_ai_gateway.py
 **配置**
 
 ```bash
-python3 scripts/configure_ai_gateway.py
+python3 scripts/aicreative_mcp.py check
 ```
 
 **🌐 跨平台**：Claude Code · Codex
@@ -378,7 +374,7 @@ python3 scripts/configure_ai_gateway.py
 
 - 中性、可配置的创作者设定，不默认性别或年龄
 - 角色、服装、产品和场景连续性约束
-- Planner、图片与视频 Provider 分开配置
+- Agent 规划与 MCP 图片/视频生成分开执行
 - `--heuristic-plan --dry-run` 可离线预览整个项目
 - 保留成功片段和中间产物，便于恢复失败任务
 

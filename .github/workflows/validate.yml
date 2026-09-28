@@ -19,6 +19,8 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check -r product-detail-page-pipeline/requirements.txt -r research-serp-keywords/requirements.txt
       - name: Check vendored runtime
         run: python3 shared/sync_vendored.py --check
+      - name: Test AI Creative MCP workflows
+        run: python3 -m unittest discover -s tests -p "test_aicreative*.py" -v
       - name: Test gateway configuration
         run: python3 tests/test_ai_gateway.py
       - name: Test script-to-storyboard-video
@@ -36,4 +38,4 @@ jobs:
       - name: Check digital-human-video JavaScript
         run: npm --prefix digital-human-video run check
       - name: Compile Python sources
-        run: python3 -m compileall -q shared product-creative-scraper open-tiktok-script script-to-storyboard-video product-to-ugc-video product-detail-page-pipeline research-serp-keywords
+        run: python3 -m compileall -q shared product-creative-scraper open-tiktok-script script-to-storyboard-video product-to-ugc-video product-detail-page-pipeline standard-product-image research-serp-keywords

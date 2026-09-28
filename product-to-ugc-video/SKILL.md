@@ -55,36 +55,16 @@ If demographic fields are missing, keep them unspecified or choose a product-rel
 2. Generate a stable character reference image unless the user already provided one.
 3. Save prompts and manifests into a project folder.
 4. Generate continuous keyframes through `scripts/image_tool.py`.
-5. Generate Veo or Seedance video segments through `scripts/generate_video.py` using adjacent frames as first and last anchors.
+5. Generate AI Creative MCP video segments through `scripts/generate_video.py` using adjacent frames as first and last anchors.
 6. Save an assembly manifest and merge metadata for final stitching.
 
-## Provider Compatibility
+## AI Creative MCP backend
 
-Configure a provider-neutral NewAPI-compatible gateway once:
+Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for authentication, bindings and recovery. Use Python 3.11+ and Pillow; use ffmpeg/ffprobe for video assembly and validation. The default image/video model IDs are 2102/1103, overridable with `AICREATIVE_IMAGE_MODEL_ID` / `AICREATIVE_VIDEO_MODEL_ID`.
 
-```bash
-python3 scripts/configure_ai_gateway.py
-```
+Bind the local product image and any supplied character reference to matching AI Creative assets first. Generated character references and frames are automatically reused by asset ID. Keyframe images use product + character + previous-frame references. Videos pass adjacent images explicitly as `frame.firstFrame` / `frame.lastFrame`, never as general `imageAssets` in the same request.
 
-The shared file at `~/.config/ai-gateway/config.env` supplies `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY`, `AI_TEXT_MODEL`, `AI_IMAGE_MODEL`, and `AI_VIDEO_MODEL`. Shell variables and skill-local `.env` values override it. Existing `UGC_*`, `LLM_*`, `IMAGE_API_*`, `VIDEO_API_*`, and `NEWAPI_*` variables remain compatible.
-
-The vendored `image_tool.py` and `generate_video.py` files are generated from the repository's single `shared/media-runtime/` source, while remaining bundled here for independent installation.
-
-`scripts/generate_video.py` includes common compatibility fields for gateway models whose name contains `veo` or `seedance`.
-
-When `--duration N` is used, the script keeps the top-level `duration` field and also sends provider-compatible duration fields:
-
-- `seconds: "N"` for task adaptors that only forward `seconds`
-- `metadata.duration: N`
-- `metadata.durationSeconds: N` for Veo models
-
-When `--width` and `--height` are provided, the script mirrors inferred vertical or horizontal format hints into metadata:
-
-- `metadata.ratio`, for example `9:16`
-- `metadata.aspectRatio`, for Veo models
-- `metadata.resolution`, for example `720p`
-
-Provider behavior is not standardized. Inspect `--dry-run` output and compare it with provider documentation before a paid request. No private gateway is configured by default.
+This branch does not use AI gateway settings or a text API. The calling agent creates the structured plan and passes `--plan-file`; use `--heuristic-plan` only for the deterministic local fallback. Keep the skill's product and creator continuity checks.
 
 ## Script Entry Point
 
@@ -96,20 +76,11 @@ python3 scripts/product_to_ugc.py --product-image ... --description ...
 
 Read [references/cli.md](references/cli.md) for common command patterns and [references/project-layout.md](references/project-layout.md) for the output structure.
 
-## Planner Behavior
+## Planner behavior
 
-By default the script uses a chat-completions model to produce a structured JSON plan for:
+Prepare a JSON plan containing `creator_profile`, `character_reference_prompt`, `frames` and adjacent-frame `segments`. To inspect the required shape, run `--heuristic-plan --planner-only`, then refine the resulting `planning/plan.json` with the supplied product facts and creative brief. Pass that file with `--plan-file` for generation. The script validates the plan before creating media.
 
-- creator identity
-- character reference prompt
-- continuous keyframe prompts
-- adjacent-frame video prompts
-
-Use `--heuristic-plan` when:
-
-- the user wants a deterministic local fallback
-- the planner API is unavailable
-- you want a dry-run that avoids planner costs
+Do not silently replace the agent's creative plan with the heuristic fallback. The latter is an explicit offline planning option.
 
 ## Output Contract
 
@@ -137,7 +108,7 @@ The project should contain:
 
 ## Public-Release Rules
 
-- Require explicit provider URLs and model IDs; do not assume a company gateway.
+- Use the configured AI Creative MCP endpoint and model IDs available to the account; do not fall back to a gateway.
 - Preserve visible product structure, label placement, color, and usage. Do not invent certifications, results, reviews, or before/after claims.
 - Start with `--heuristic-plan --dry-run` to inspect prompts and manifests without spending quota.
 - Treat customer images, generated faces, API responses, and project folders as private unless redistribution rights are clear.

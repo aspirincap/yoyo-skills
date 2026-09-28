@@ -15,10 +15,10 @@ Each run creates a project folder under `outputs/product_to_ugc/<project-slug>` 
 - `planning/`
   - `plan.json`
   - `plan_summary.md`
-  - optional planner request and response JSON
+  - agent-supplied or heuristic plan; no text API request
 - `character_reference/`
   - generated stable character reference image
-  - `responses/` with raw image API responses
+  - `responses/` with MCP task journals
 - `prompts/frames/`
   - one prompt text file per continuous keyframe
 - `prompts/character_reference.prompt.txt`
@@ -27,10 +27,10 @@ Each run creates a project folder under `outputs/product_to_ugc/<project-slug>` 
   - one video-model prompt text file and one voiceover text file per segment
 - `continuous_frames/`
   - generated keyframe images
-  - `responses/` with raw image API responses
+  - `responses/` with MCP task journals
 - `video_segments/`
   - generated mp4 segment files
-  - `responses/` with raw video API responses
+  - `responses/` with MCP task journals
 - `manifests/`
   - `assembly_manifest.json` for adjacent-frame segment stitching
   - `merge_manifest.json` for final concat metadata
@@ -51,3 +51,5 @@ The Phase 2 script writes `manifests/assembly_manifest.json` with:
 - suggested tail trim per segment
 
 This manifest is designed for a later stitching phase with ffmpeg or another editor.
+
+Generated media retain exact downloaded `*.original` files. Image delivery files use their declared encoding. Task journals preserve clientRequestId/taskId for recovery.

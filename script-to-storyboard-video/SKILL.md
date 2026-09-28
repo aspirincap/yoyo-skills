@@ -1,6 +1,6 @@
 ---
 name: script-to-storyboard-video
-description: Turn an existing advertising script plus product images into storyboard sheets, stop for explicit human approval, then generate vertical ad clips through a configurable NewAPI-compatible image/video gateway. Use when the user already has an ad script or explicitly requests a storyboard-first approval workflow. Do not use for creator-persona development, character-reference generation, continuous keyframes, or character-led UGC; use product-to-ugc-video for those requests.
+description: Turn an existing advertising script plus product images into storyboard sheets, stop for explicit human approval, then generate vertical ad clips through AI Creative MCP. Use when the user already has an ad script or explicitly requests a storyboard-first approval workflow. Do not use for creator-persona development, character-reference generation, continuous keyframes, or character-led UGC; use product-to-ugc-video for those requests.
 ---
 
 # Script To Storyboard Video
@@ -9,7 +9,7 @@ This skill turns an advertising script plus product image(s) into a staged produ
 
 1. **Storyboard stage:** generate one or more storyboard sheets from the script, product image, and target duration using the configured image model.
 2. **Approval gate:** stop and show the storyboard(s). Do not generate video until the user explicitly confirms the storyboard is OK.
-3. **Video stage:** use the approved storyboard sheet(s) as visual references and call the configured compatible video endpoint to generate 9:16 clips with audio.
+3. **Video stage:** use the approved storyboard sheet(s) as visual references and call AI Creative MCP to generate 9:16 clips with audio.
 
 It is intentionally narrower than `product-to-ugc-video`: it does not build a creator persona, character sheet, or adjacent-frame UGC plan. It is for ad storyboard production and direct compatible video execution.
 
@@ -17,35 +17,18 @@ It is intentionally narrower than `product-to-ugc-video`: it does not build a cr
 
 The skill includes self-contained provider wrappers:
 
-- `scripts/image_tool.py`: vendored OpenAI-format image generation/editing runtime used for storyboards.
-- `scripts/generate_video.py`: vendored `/v1/video/generations` runtime. Provider-specific fields may require `--extra` or `--metadata`.
+- `scripts/image_tool.py`: AI Creative MCP image/reference generation runtime.
+- `scripts/generate_video.py`: AI Creative MCP task submission, polling and result download.
 - `scripts/script_to_storyboard_video.py`: thin orchestration layer for this skill's two-stage workflow.
-- `scripts/configure_ai_gateway.py`: securely configure the shared gateway once for all supported skills.
+- `scripts/aicreative_mcp.py`: MCP configuration, model discovery and local reference bindings.
 
 The vendored provider wrappers are generated from the repository's `shared/media-runtime/` source so this skill remains independently installable without maintaining divergent copies.
 
 Read this file first. Only open script source if you need to debug parameters or patch behavior.
 
-## Environment
+## MCP setup
 
-Prefer the shared provider-neutral configuration:
-
-```bash
-python3 scripts/configure_ai_gateway.py
-```
-
-This writes `~/.config/ai-gateway/config.env` with restricted file permissions. Configure once, then reuse it from `product-creative-scraper`, `open-tiktok-script`, this skill, and `product-to-ugc-video`.
-
-Primary variables:
-
-- `AI_GATEWAY_BASE_URL`: NewAPI-compatible root URL, without `/v1/...`
-- `AI_GATEWAY_API_KEY`: model API token sent as Bearer auth
-- `AI_IMAGE_MODEL`: provider image model ID
-- `AI_VIDEO_MODEL`: provider video model ID
-
-Configuration precedence is shell environment, skill-local `.env`, shared global config, then defaults. Legacy `AD_STORYBOARD_*`, `IMAGE_API_*`, `VIDEO_API_*`, `OPENAI_*`, and `NEWAPI_*` variables remain supported.
-
-Never commit a real `.env` or global configuration file.
+Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for authentication, local image bindings, model discovery and task recovery. Use Python 3.11+, Pillow and ffprobe. Existing Codex `aicreative-beta` configuration is reused without copying the Token. Bind local product images before generation; generated storyboards reuse returned asset IDs automatically.
 
 ## Inputs
 
@@ -59,12 +42,12 @@ Collect or infer:
 
 Defaults:
 
-- storyboard model: `AI_IMAGE_MODEL` or `gpt-image-1`
-- storyboard sheet size: `2048x1152`
+- storyboard model: `AICREATIVE_IMAGE_MODEL_ID` or `2102` (Seedream 4.5)
+- storyboard canvas hint: `2048x1152`; actual dimensions follow the model tier
 - storyboard sheet aspect: `16:9`
-- video model: `AI_VIDEO_MODEL`; configure a non-fast model when final quality matters
-- video output: `9:16`, `720x1280`, `720p`, audio on
-- segment duration: `15s`; total durations above 15s become multiple storyboard/video segments
+- video model: `AICREATIVE_VIDEO_MODEL_ID` or `1103` (Seedance 2.0)
+- video output: `9:16`, `720P`, audio on; verify actual output dimensions
+- maximum segment duration: `15s`; balanced splitting avoids a trailing clip shorter than the default model minimum of 4 seconds
 
 ## Stage 1: Generate Storyboards
 
@@ -85,8 +68,7 @@ python3 scripts/script_to_storyboard_video.py storyboard \
   --script-file /absolute/path/script.txt \
   --product-image /absolute/path/product.png \
   --duration 30 \
-  --project-name body-oil-cream-ad \
-  --api-key-env AI_GATEWAY_API_KEY
+  --project-name body-oil-cream-ad
 ```
 
 After the command finishes:
@@ -106,7 +88,6 @@ Example:
 python3 scripts/script_to_storyboard_video.py video \
   --project-dir /absolute/path/to/project \
   --confirmed \
-  --api-key-env AI_GATEWAY_API_KEY \
   --parallel 2
 ```
 
@@ -167,17 +148,11 @@ Use this policy:
 
 The orchestration script enforces this in normal execution: `video` requires `--confirmed` unless `--dry-run` is used.
 
-## Error Handling
+## Recovery and capability limits
 
-- **API key missing:** run `configure_ai_gateway.py`, set `AI_GATEWAY_API_KEY`, or pass a legacy key variable.
-- **Base URL missing:** run `configure_ai_gateway.py`, set `AI_GATEWAY_BASE_URL`, or pass `--base-url`.
-- **Wrong base URL:** use the root OpenAI-compatible URL expected by the wrapper, not a full operation endpoint.
-- **Provider mismatch:** model IDs and request fields differ across gateways. Start with `--dry-run`, compare the payload with provider documentation, and use `--metadata` or `--extra` only for documented fields.
-- **Storyboard product drift:** add stricter `--product-notes` and regenerate the storyboard.
-- **Video includes storyboard UI:** strengthen the video prompt to say the storyboard is reference only and must not appear as grid, panels, labels, or table.
-- **Video not 9:16:** verify `--width 720 --height 1280 --ratio 9:16`.
-- **No audio:** verify the video command includes `--generate-audio`.
-- **Long video:** split into 15s segments, generate multiple clips, then stitch externally if the user requests a single final video.
+Use `--project-dir` on the storyboard command to resume the same project; video uses the existing `--project-dir`. Journals preserve task IDs and completed artifacts. Changed prompts/models require a new project instead of overwriting approved work. `--dry-run` is offline.
+
+The selected model must support the requested duration, ratio, resolution and audio mode. The runtime checks live model definitions before creating tasks. A storyboard is a general image reference, not a first-frame constraint. Video prompts must still prohibit storyboard grids and labels. The MCP exposes no watermark switch; `no watermark` is a semantic prompt instruction, not a guaranteed postprocessing control.
 
 ## Output Response
 

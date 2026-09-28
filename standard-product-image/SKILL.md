@@ -18,7 +18,7 @@ Prompt-only mode has no external dependency. Direct image generation requires an
 2. Extract only product facts visible in the source image: product type, color, material, shape, logo placement, functional details, screen/display state, packaging if it is part of the product presentation.
 3. Confirm the destination platform or requested canvas when the user supplied one. Otherwise use the portable default: square canvas, approximately 75-85% subject coverage, and enough safe margin for marketplace cropping.
 4. Write a standardized prompt using the base specification and the matching category add-on.
-5. If the user asks to generate the image, use the current environment's available image generation or image editing tool with the source photo as the reference. If the user asks only for the prompt, return the prompt.
+5. If the user asks to generate the image, use this branch's AI Creative MCP runtime with the source photo as the reference. If the user asks only for the prompt, return the prompt.
 6. When the product does not fit a listed category, use `generic` and borrow the closest category's composition logic without inventing unseen details.
 7. Inspect the output against the acceptance checklist. Regenerate only when a material defect is visible.
 
@@ -148,3 +148,19 @@ Before presenting a generated image, check:
 - **No hallucination:** no new feature, certification, packaging, accessory, claim, or decorative element appears.
 
 When a defect affects product identity, treat it as a failed result. When the issue is only a small aesthetic preference, describe it and let the user decide whether another paid generation is worthwhile.
+
+## AI Creative MCP execution
+
+Read [references/aicreative-mcp.md](references/aicreative-mcp.md) before the first generation. This branch uses AI Creative MCP for generation; the calling agent still identifies visible product facts and reviews the result. Python 3.11+ and Pillow are required.
+
+Bind the local source photo to its matching asset ID or accessible source URL. Then save the combined specification and exclusions to a prompt file and run:
+
+```bash
+python3 scripts/image_tool.py edit \
+  --image /absolute/path/product.png \
+  --prompt-file /absolute/path/product.prompt.txt \
+  --size 1024x1024 --output outputs/product.png \
+  --save-json outputs/product.json
+```
+
+Use `--dry-run` for an offline preview. Public visibility defaults to OFF. `--size` controls the ratio hint; actual output dimensions follow the chosen model tier. Do not promise exact platform dimensions or product identity without inspecting the result. Mask-based local editing and transparent-background controls are not exposed by this MCP.

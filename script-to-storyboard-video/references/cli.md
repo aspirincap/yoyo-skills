@@ -1,52 +1,36 @@
-# CLI Reference
+# CLI reference
 
-## Env Setup
+Read [aicreative-mcp.md](aicreative-mcp.md) for configuration and local-reference bindings. The commands use numeric modelConfigId values, not gateway model names.
 
-```bash
-cd /path/to/script-to-storyboard-video
-python3 scripts/configure_ai_gateway.py
-```
-
-The shared configuration supplies `AI_GATEWAY_BASE_URL`, `AI_GATEWAY_API_KEY`, `AI_IMAGE_MODEL`, and `AI_VIDEO_MODEL`. Skill-local `.env`, shell exports, and explicit CLI values can override it.
-
-## Storyboard Stage
+## Storyboard stage
 
 ```bash
+python3 scripts/aicreative_mcp.py check
+python3 scripts/aicreative_mcp.py bind --file /absolute/path/product.png --asset-id 123
 python3 scripts/script_to_storyboard_video.py storyboard \
   --script-file /absolute/path/script.txt \
   --product-image /absolute/path/product.png \
-  --duration 30 \
-  --project-name my-ad \
-  --api-key-env AI_GATEWAY_API_KEY
+  --duration 30 --project-dir /absolute/path/project
 ```
 
-Useful flags:
+- Repeat `--product-image` for multiple bound local references.
+- `--product-notes` adds product identity and claim constraints.
+- `--segment-duration` is the maximum segment duration, default 15 seconds. Splits are balanced to keep default-model clips between 4 and 15 seconds.
+- `--storyboard-count` explicitly chooses the number of valid segments.
+- `--storyboard-frames` defaults to 6 panels.
+- `--storyboard-size 2048x1152` is a ratio hint; exact pixels follow the model tier.
+- `--image-model 2102` selects the MCP image model; `--dry-run` is offline.
+- Reuse `--project-dir` with unchanged inputs to recover the original tasks. Use a new project for revisions.
 
-- `--product-image`: repeat for multiple product references
-- `--product-notes`: stricter product identity/compliance notes
-- `--segment-duration`: default `15`, max `15`
-- `--storyboard-count`: override automatic `ceil(duration / segment_duration)`
-- `--storyboard-frames`: default `6`
-- `--storyboard-size`: default `2048x1152`
-- `--dry-run`: print image request without spending generation
+## Video stage
 
-## Video Stage
+After storyboard approval:
 
 ```bash
 python3 scripts/script_to_storyboard_video.py video \
-  --project-dir /absolute/path/project \
-  --confirmed \
-  --api-key-env AI_GATEWAY_API_KEY \
-  --parallel 2
+  --project-dir /absolute/path/project --confirmed --parallel 2
 ```
 
-Useful flags:
+`--video-model` defaults to `AICREATIVE_VIDEO_MODEL_ID` or 1103. `--ratio` defaults to 9:16, `--resolution` to 720P. Audio defaults to ON; use `--no-generate-audio` for silent output. The storyboard is passed as a general reference image. The MCP has no explicit watermark toggle.
 
-- `--confirmed`: required for real video generation
-- `--video-model`: defaults to `AI_VIDEO_MODEL`; set it to the model ID supported by your provider
-- `--ratio`: default `9:16`
-- `--width`: default `720`
-- `--height`: default `1280`
-- `--generate-audio` / `--no-generate-audio`
-- `--parallel`: number of segments to generate concurrently
-- `--dry-run`: inspect video payloads without submitting
+`--poll-interval`, `--max-polls` and `--parallel` control waiting and concurrency. A polling timeout preserves task IDs; repeat the same command to resume without resubmitting completed tasks. Check actual dimensions, duration and audio with ffprobe before delivery.

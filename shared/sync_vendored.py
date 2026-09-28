@@ -12,12 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 AI_SKILLS = (
     "product-creative-scraper",
     "open-tiktok-script",
-    "script-to-storyboard-video",
-    "product-to-ugc-video",
-    "product-detail-page-pipeline",
 )
 VIDEO_SKILLS = ("script-to-storyboard-video", "product-to-ugc-video")
-IMAGE_SKILLS = (*VIDEO_SKILLS, "product-detail-page-pipeline")
+IMAGE_SKILLS = (*VIDEO_SKILLS, "product-detail-page-pipeline", "standard-product-image")
 
 
 def mappings() -> list[tuple[Path, Path]]:
@@ -33,6 +30,8 @@ def mappings() -> list[tuple[Path, Path]]:
             ]
         )
     for skill in IMAGE_SKILLS:
+        pairs.append((ROOT / "AICREATIVE_MCP.md", ROOT / skill / "references/aicreative-mcp.md"))
+        pairs.append((ROOT / "shared/media-runtime/aicreative_mcp.py", ROOT / skill / "scripts/aicreative_mcp.py"))
         pairs.append((ROOT / "shared/media-runtime/image_tool.py", ROOT / skill / "scripts/image_tool.py"))
     for skill in VIDEO_SKILLS:
         pairs.append((ROOT / "shared/media-runtime/generate_video.py", ROOT / skill / "scripts/generate_video.py"))
@@ -49,6 +48,7 @@ def main() -> int:
             if not target.exists() or source.read_bytes() != target.read_bytes():
                 stale.append(str(target.relative_to(ROOT)))
         else:
+            target.parent.mkdir(parents=True, exist_ok=True)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
             target.chmod(source.stat().st_mode)

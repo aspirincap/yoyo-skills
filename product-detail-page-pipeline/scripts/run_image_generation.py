@@ -16,7 +16,7 @@ import sys
 import time
 from typing import Any
 
-from ai_gateway import get_setting
+from aicreative_mcp import model_default
 
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
@@ -25,7 +25,7 @@ DEFAULT_IMAGE_TOOL = SCRIPT_DIR / "image_tool.py"
 DEFAULT_SUPPORTED_SIZES = "1024x1024,1024x1536,1536x1024"
 SUPPORTED_REFERENCE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 PROTECTED_EXTRA_FIELDS = {"model", "prompt", "messages", "modalities", "n", "size", "image", "mask"}
-ALLOWED_EXTRA_FIELDS = {"seed"}
+ALLOWED_EXTRA_FIELDS = set()
 
 
 def read_json(path: pathlib.Path) -> dict[str, Any]:
@@ -469,10 +469,6 @@ def build_command(
         cmd.extend(["--endpoint", args.endpoint])
     if args.output_format:
         cmd.extend(["--output-format", args.output_format])
-    if args.quality:
-        cmd.extend(["--quality", args.quality])
-    if args.background:
-        cmd.extend(["--background", args.background])
     if args.extra:
         cmd.extend(["--extra", args.extra])
     if args.image_tool_dry_run:
@@ -490,25 +486,19 @@ def main(argv: list[str] | None = None) -> int:
     configured_tool = os.getenv("IMAGE_TOOL_PATH") or str(DEFAULT_IMAGE_TOOL)
     parser.add_argument("--image-tool", type=pathlib.Path, default=pathlib.Path(configured_tool))
     parser.add_argument("--reference-dir", action="append", type=pathlib.Path, default=[])
-    parser.add_argument("--model", default=os.getenv("AI_IMAGE_MODEL") or os.getenv("IMAGE_MODEL"))
-    parser.add_argument("--base-url", default=os.getenv("AI_GATEWAY_BASE_URL"))
+    parser.add_argument("--model", default=model_default("image"))
+    parser.add_argument("--base-url", default=os.getenv("AICREATIVE_MCP_URL"))
     parser.add_argument("--mode", choices=["auto", "generate", "edit"], default="auto")
-    parser.add_argument("--endpoint", choices=["auto", "images", "chat"], default="auto")
+    parser.add_argument("--endpoint", choices=["mcp"], default="mcp")
     parser.add_argument("--size", help="Forwarded to image_tool.py. If omitted, inferred from aspect ratio.")
     parser.add_argument("--default-size", default="1024x1024")
     parser.add_argument("--output-format")
-    parser.add_argument("--quality")
-    parser.add_argument("--background")
     parser.add_argument("--extra", help="JSON object forwarded to image_tool.py --extra.")
     parser.add_argument("--timeout", type=int, default=240)
     parser.add_argument(
         "--supported-sizes",
-        default=get_setting(
-            "AI_IMAGE_SUPPORTED_SIZES",
-            default=DEFAULT_SUPPORTED_SIZES,
-            skill_dir=SKILL_DIR,
-        ),
-        help="Comma-separated sizes supported by the selected image model.",
+        default=os.getenv("AICREATIVE_IMAGE_CANVAS_HINTS", DEFAULT_SUPPORTED_SIZES),
+        help="Allowed canvas ratio hints; actual pixel dimensions follow the MCP model resolution tier.",
     )
     parser.add_argument("--skip-backend-check", action="store_true", help="Skip the automatic non-generating backend preflight.")
     parser.add_argument("--only-screen", action="append", help="Generate only these screen IDs.")
@@ -636,7 +626,7 @@ def main(argv: list[str] | None = None) -> int:
         "model": args.model,
         "mode": args.mode,
         "endpoint": args.endpoint,
-        "base_url": args.base_url or "AI_GATEWAY_BASE_URL",
+        "base_url": args.base_url or "Codex MCP configuration / AICREATIVE_MCP_URL",
         "backend_preflight": preflight,
         "user_approval": approval,
         "dry_run": args.dry_run,
