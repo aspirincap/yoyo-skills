@@ -6,17 +6,17 @@ license: MIT
 
 # Standard Product Image
 
-## 积分确认门禁（必须执行）
+## 积分确认与连接选择
 
-正式提交任何新的 AI Creative 生成任务前，先准备提示词、素材和参数，运行下方的正常生成命令。未确认时运行器只读取模型配置、写出 `*.credits.json` 和配套 `.md`，随后以 `Credit approval required` 停止，不会提交生成任务。
+优先使用当前会话已连接的 AI Creative MCP 工具。平台连接与 Python CLI 的本地配置是两个独立入口：原生 `list_models` 成功即可继续读取模型参数和准备任务，不需要先运行 CLI `check`，也不需要向用户索要 Token。CLI 报“未配置”不代表平台未授权；有原生工具时直接走原生路径，不要求平台把凭证交给脚本。
 
-按本次生成数量汇总；修正瑕疵而重新生成也需要新的积分确认。
+提交前说明本批次内容、模型、数量及关键参数，并告知 **“大约需要消耗 xx 积分”**；xx = 当前模型 `minPoints × 本批新增生成数量` 之和，注明“按模型起步积分估算，实际扣费可能随参数变化”。从原生 `list_models` / `get_model_parameters` 或 CLI 读取起步积分；缺失时只补查该信息，不编造价格。
 
-向用户说明本批次内容、模型和数量，并告知：**“大约需要消耗 xx 积分”**。xx 使用当前模型 `minPoints × 生成数量` 累加；补充“按模型起步积分估算，实际扣费可能随参数变化”。不得称为准确报价或扣费上限。读取不到起步积分时停止，不猜测免费或沿用硬编码价格。
+用户明确同意已展示的本批次方案及预计积分后即可提交。原生路径允许直接调用 `submit_generation_task`，会话中的确认就是依据，不要求 `*.credits.json`、`approve-credits` 或 CLI 连通性检查。把估算、实际回复及任务 ID 记录在现有项目日志即可，不新增专用凭证审批。CLI 路径仍用 `approve-credits` 记录同一条用户回复，不再为生成确认文件询问用户。
 
-等待用户明确同意本次已告知的预估后，才可用 `scripts/aicreative_mcp.py approve-credits --review <本次确认文件> --confirmation '<用户实际回复>'` 记录同意，并重跑原命令。不能自行确认，也不能把历史的“不限积分”、生成请求或内容审阅当作对本次积分的确认。用户拒绝或未回复时不提交。
+按本次图片数量汇总；修正瑕疵的新增付费生成也需要告知积分并获得同意。
 
-任务数量、模型、提示词、素材、参数（含时长、分辨率、声音、公开开关）或账户变化，需要重新告知并确认。已获批任务的同一 `clientRequestId` 重试，以及查询、下载已有任务无需重复确认；新增任务和失败后的重新生成仍需确认。禁止通过直接调用 MCP `submit_generation_task`、改用其他脚本或自行写入确认文件绕过门禁。纯规划和 `--dry-run` 不收费、不需要确认。详细操作见 [MCP 积分门禁](references/aicreative-mcp.md#credit-approval-gate)。
+同一批次、同一账户、同一费用范围内，切换原生/CLI、修复连接、整理输出路径或等义润色提示词不需要重复确认。新增付费任务、变更模型/数量/计费参数或提高预估时，再告知变化并确认；内容、素材、公开范围的实质变化按用户要求确认。已接受的任务只查询或下载，提交结果不明时保留同一 `clientRequestId`，不另建任务。只读查询、规划与离线预览无需积分确认。用户未同意或拒绝时不提交；连接授权、过去的“不限积分”不替代本批次费用同意。详细操作见 [原生 MCP 与积分确认](references/aicreative-mcp.md#credit-approval-gate)。
 
 ## Overview
 
@@ -30,7 +30,7 @@ Prompt-only mode has no external dependency. Direct image generation requires an
 2. Extract only product facts visible in the source image: product type, color, material, shape, logo placement, functional details, screen/display state, packaging if it is part of the product presentation.
 3. Confirm the destination platform or requested canvas when the user supplied one. Otherwise use the portable default: square canvas, approximately 75-85% subject coverage, and enough safe margin for marketplace cropping.
 4. Write a standardized prompt using the base specification and the matching category add-on.
-5. If the user asks to generate the image, use this branch's AI Creative MCP runtime with the source photo as the reference. If the user asks only for the prompt, return the prompt.
+5. If the user asks to generate the image, use the connected AI Creative MCP tools (or configured CLI) with the source photo as the reference. If the user asks only for the prompt, return the prompt.
 6. When the product does not fit a listed category, use `generic` and borrow the closest category's composition logic without inventing unseen details.
 7. Inspect the output against the acceptance checklist. Regenerate only when a material defect is visible and the user approves the new credit estimate.
 
@@ -163,9 +163,9 @@ When a defect affects product identity, treat it as a failed result. When the is
 
 ## AI Creative MCP execution
 
-Read [references/aicreative-mcp.md](references/aicreative-mcp.md) before the first generation. This branch uses AI Creative MCP for generation; the calling agent still identifies visible product facts and reviews the result. Python 3.11+ and Pillow are required.
+Read [references/aicreative-mcp.md](references/aicreative-mcp.md) before the first generation. Prefer native MCP tools: resolve the source photo to an asset ID, fetch the chosen model parameters, disclose credits, then submit IMAGE with that asset as `imageAssets` after agreement. Query and save the result, then inspect it. No CLI check or receipt is needed for this path. Python 3.11+ and Pillow are required only for local scripts.
 
-Bind the local source photo to its matching asset ID or accessible source URL. Then save the combined specification and exclusions to a prompt file and run:
+For a configured CLI instead, bind the local source photo, save the combined specification and exclusions to a prompt file and run:
 
 ```bash
 python3 scripts/image_tool.py edit \

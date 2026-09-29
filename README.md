@@ -65,7 +65,7 @@ git clone https://github.com/aspirincap/yoyo-skills.git ~/.codex/skills/
 
 ## 🔌 AI Creative MCP branch
 
-本分支的 `standard-product-image`、`product-detail-page-pipeline`、`script-to-storyboard-video`、`product-to-ugc-video` 使用 **AI Creative MCP**，不再使用 AI 网关。支持复用 Codex MCP 配置、素材绑定、任务幂等和断点恢复；UGC 规划由 Agent 提供计划文件或使用本地规则。安装与使用见 [AICREATIVE_MCP.md](./AICREATIVE_MCP.md)。
+本分支的 `standard-product-image`、`product-detail-page-pipeline`、`script-to-storyboard-video`、`product-to-ugc-video` 使用 **AI Creative MCP**，不再使用 AI 网关。优先复用平台已授权 MCP 工具；也支持配置本地 CLI、素材绑定、任务幂等和断点恢复。积分门禁只要求提交前告知预估并获同意，不强制本地生成器或确认文件；UGC 规划由 Agent 提供计划文件或使用本地规则。安装与使用见 [AICREATIVE_MCP.md](./AICREATIVE_MCP.md)。
 
 `open-tiktok-script` 的视频分析改用 `https://agentapi.spotmaxtech.com/api/v1/describe_video`，支持本地文件与媒体直链；本地测试发送 `X-API-Key`，线上模式不发送。配置见 [使用说明](./open-tiktok-script/README.md)。`product-creative-scraper` 的图片理解仍使用原 [AI 网关](./AI_GATEWAY.md)。
 
@@ -348,7 +348,9 @@ python3 scripts/configure_ai_gateway.py
 - 支持 dry-run、并发片段生成、失败日志和项目恢复
 - 使用 ffprobe 验证比例、时长、帧率和音频流
 
-**配置**
+**连接**
+
+优先使用平台已连接的 AI Creative MCP；仅独立 CLI 使用者需要检查本地配置：
 
 ```bash
 python3 scripts/aicreative_mcp.py check

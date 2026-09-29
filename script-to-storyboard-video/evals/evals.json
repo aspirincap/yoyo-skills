@@ -10,13 +10,31 @@
     {
       "id": 2,
       "prompt": "故事版可以，继续用Seedance生成视频，要竖版、有声音、不要fast模型。",
-      "expected_output": "The assistant should run the video stage with --confirmed, non-fast Seedance, 9:16, audio enabled, then verify output with ffprobe.",
+      "expected_output": "After storyboard approval, obtain agreement to the video estimate if not already given; use native MCP directly or configured CLI with --confirmed, non-fast Seedance, 9:16 and audio enabled, then verify output with ffprobe. Do not require CLI setup for native tools.",
       "files": []
     },
     {
       "id": 3,
       "prompt": "我只有产品图，想先设计一个稳定创作者人设，再做连续关键帧 UGC。",
       "expected_output": "The assistant should route this character-led continuity request to product-to-ugc-video instead of the storyboard-first skill.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "平台 aicreative/list_models 已成功；Python 生成器说未配置连接。我已同意刚才展示的本批方案和预计积分，请用现有授权继续。",
+      "expected_output": "Use the connected native AI Creative tools directly, preserve prepared prompts/assets and existing approved scope, record request/task IDs and resume without requesting a Token, CLI check, runtime credential injection, CLI credit receipt or repeated credit approval. Preserve this skill's creative/stage review. Do not re-submit accepted tasks.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "MCP 已授权，先生成吧。上下文中尚未告知本批预计积分，也没有费用确认。",
+      "expected_output": "Fetch current model minPoints and parameters through native MCP, prepare and show the batch estimate, then wait for agreement before submit_generation_task. Connection authorization alone is not credit approval. Do not force CLI configuration.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "已准备两张 0–12 秒、12–24 秒的预分镜，用户已同意两张正式分镜的预计积分；CLI 无配置但原生 MCP 正常。",
+      "expected_output": "Reuse the prepared prompts and references, generate only the two approved formal storyboard sheets through native MCP, record and show actual outputs, then stop for storyboard review. Do not call the video generation tool or mislabel local previews as generated storyboards. If video estimate is later shown alongside storyboard review, one explicit reply can approve both.",
       "files": []
     }
   ]

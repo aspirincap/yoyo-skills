@@ -13,21 +13,21 @@ This skill turns an advertising script plus product image(s) into a staged produ
 
 It is intentionally narrower than `product-to-ugc-video`: it does not build a creator persona, character sheet, or adjacent-frame UGC plan. It is for ad storyboard production and direct compatible video execution.
 
-## 积分确认门禁（必须执行）
+## 积分确认与连接选择
 
-正式提交任何新的 AI Creative 生成任务前，先准备提示词、素材和参数，运行下方的正常生成命令。未确认时运行器只读取模型配置、写出 `*.credits.json` 和配套 `.md`，随后以 `Credit approval required` 停止，不会提交生成任务。
+优先使用当前会话已连接的 AI Creative MCP 工具。平台连接与 Python CLI 的本地配置是两个独立入口：原生 `list_models` 成功即可继续读取模型参数和准备任务，不需要先运行 CLI `check`，也不需要向用户索要 Token。CLI 报“未配置”不代表平台未授权；有原生工具时直接走原生路径，不要求平台把凭证交给脚本。
 
-故事板阶段与视频阶段分别汇总并确认；`--confirmed` 仅表示故事板内容获批，不能替代视频积分确认。
+提交前说明本批次内容、模型、数量及关键参数，并告知 **“大约需要消耗 xx 积分”**；xx = 当前模型 `minPoints × 本批新增生成数量` 之和，注明“按模型起步积分估算，实际扣费可能随参数变化”。从原生 `list_models` / `get_model_parameters` 或 CLI 读取起步积分；缺失时只补查该信息，不编造价格。
 
-向用户说明本批次内容、模型和数量，并告知：**“大约需要消耗 xx 积分”**。xx 使用当前模型 `minPoints × 生成数量` 累加；补充“按模型起步积分估算，实际扣费可能随参数变化”。不得称为准确报价或扣费上限。读取不到起步积分时停止，不猜测免费或沿用硬编码价格。
+用户明确同意已展示的本批次方案及预计积分后即可提交。原生路径允许直接调用 `submit_generation_task`，会话中的确认就是依据，不要求 `*.credits.json`、`approve-credits` 或 CLI 连通性检查。把估算、实际回复及任务 ID 记录在现有项目日志即可，不新增专用凭证审批。CLI 路径仍用 `approve-credits` 记录同一条用户回复，不再为生成确认文件询问用户。
 
-等待用户明确同意本次已告知的预估后，才可用 `scripts/aicreative_mcp.py approve-credits --review <本次确认文件> --confirmation '<用户实际回复>'` 记录同意，并重跑原命令。不能自行确认，也不能把历史的“不限积分”、生成请求或内容审阅当作对本次积分的确认。用户拒绝或未回复时不提交。
+故事板与视频分别估算；正式故事板仍须经用户审阅后再生成视频。展示故事板时可以一并告知视频积分，让用户一次确认内容和费用。
 
-任务数量、模型、提示词、素材、参数（含时长、分辨率、声音、公开开关）或账户变化，需要重新告知并确认。已获批任务的同一 `clientRequestId` 重试，以及查询、下载已有任务无需重复确认；新增任务和失败后的重新生成仍需确认。禁止通过直接调用 MCP `submit_generation_task`、改用其他脚本或自行写入确认文件绕过门禁。纯规划和 `--dry-run` 不收费、不需要确认。详细操作见 [MCP 积分门禁](references/aicreative-mcp.md#credit-approval-gate)。
+同一批次、同一账户、同一费用范围内，切换原生/CLI、修复连接、整理输出路径或等义润色提示词不需要重复确认。新增付费任务、变更模型/数量/计费参数或提高预估时，再告知变化并确认；内容、素材、公开范围的实质变化按用户要求确认。已接受的任务只查询或下载，提交结果不明时保留同一 `clientRequestId`，不另建任务。只读查询、规划与离线预览无需积分确认。用户未同意或拒绝时不提交；连接授权、过去的“不限积分”不替代本批次费用同意。详细操作见 [原生 MCP 与积分确认](references/aicreative-mcp.md#credit-approval-gate)。
 
 ## Bundled Scripts
 
-The skill includes self-contained provider wrappers:
+The optional CLI path includes self-contained provider wrappers. Platform-native MCP execution does not require these wrappers to connect:
 
 - `scripts/image_tool.py`: AI Creative MCP image/reference generation runtime.
 - `scripts/generate_video.py`: AI Creative MCP task submission, polling and result download.
@@ -40,7 +40,7 @@ Read this file first. Only open script source if you need to debug parameters or
 
 ## MCP setup
 
-Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for authentication, local image bindings, model discovery and task recovery. Use Python 3.11+, Pillow and ffprobe. Existing Codex `aicreative` configuration is reused without copying the Token. Bind local product images before generation; generated storyboards reuse returned asset IDs automatically.
+Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for native execution, optional CLI setup, references and task recovery. Prefer the platform MCP connection; resolve product references to asset IDs there and reuse generated storyboard asset IDs for videos. Python 3.11+ and Pillow are needed for local scripts; ffprobe verifies final videos. A CLI configuration failure does not block native execution.
 
 ## Inputs
 
@@ -63,7 +63,9 @@ Defaults:
 
 ## Stage 1: Generate Storyboards
 
-Use the `storyboard` subcommand. It writes a recoverable project folder with:
+With platform tools, reuse any prepared project/prompts and submit one IMAGE job per sheet after credit confirmation. A prepared local preview is not a completed generated storyboard. Keep the generated sheet, its asset ID and task log per segment; show those actual results for review.
+
+The optional `storyboard` CLI writes the project and prompts with `--dry-run` without credentials. You may use those files for native submissions, then update the segment output paths and logs. Do not rerun the real CLI after native submission. With CLI configuration, run the subcommand normally. Both paths preserve:
 
 ```text
 project.json
@@ -83,7 +85,7 @@ python3 scripts/script_to_storyboard_video.py storyboard \
   --project-name body-oil-cream-ad
 ```
 
-After the command finishes:
+After the storyboard tasks finish:
 
 1. Show the generated storyboard image(s) inline.
 2. Give the `project_dir`.
@@ -92,7 +94,9 @@ After the command finishes:
 
 ## Stage 2: Generate Videos
 
-After approval, use the `video` subcommand with `--confirmed`. It reads `project.json`, creates video prompts, and generates one clip per approved storyboard segment.
+After storyboard and video-credit approval, use the approved sheet asset ID as `imageAssets` in one native VIDEO job per segment; do not use the whole storyboard grid as a first frame. Build prompts using the rules below, then poll and save clips in the same project. A missing `--confirmed` flag or CLI receipt is not a native-path blocker; the actual user approval is required.
+
+For configured CLI execution, use the `video` subcommand with `--confirmed`. It reads `project.json`, creates video prompts, and generates one clip per approved segment. It can also prepare prompts offline with `--dry-run`.
 
 Example:
 
@@ -154,15 +158,15 @@ The approval gate is important because video generation spends more quota and is
 Use this policy:
 
 - If the user asks to generate a storyboard, stop after storyboards and ask for confirmation.
-- If the user says "OK", "确认", "故事版可以", "继续生成视频", or equivalent, prepare the video stage credit estimate, obtain credit approval, then run the video stage.
+- If the user approves the storyboard, show the video estimate if not already approved. When storyboard review and video estimate were shown together, one clear reply may approve both; do not add a second confirmation just for bookkeeping.
 - If the user asks to revise the storyboard, rerun only the storyboard stage or manually adjust prompts first.
 - If the user asks to skip confirmation and generate everything in one go, state that this skill is designed as a two-stage workflow, then proceed only if the instruction is explicit and recent.
 
-The orchestration script enforces this in normal execution: `video` requires `--confirmed` unless `--dry-run` is used.
+For CLI execution, `video` requires `--confirmed` unless `--dry-run` is used. For native tools, keep the same storyboard review boundary using the conversation approval.
 
 ## Recovery and capability limits
 
-Use `--project-dir` on the storyboard command to resume the same project; video uses the existing `--project-dir`. Journals preserve task IDs and completed artifacts. Changed prompts/models require a new project instead of overwriting approved work. `--dry-run` is offline.
+Keep the existing project, prompts, generated sheets and task IDs when repairing a connection. Native execution resumes by task ID; do not repeat accepted jobs. For CLI execution, use `--project-dir` to resume and retain its journals. New paid generations use new job IDs/output files; preserve the approved originals. `--dry-run` is offline.
 
 The selected model must support the requested duration, ratio, resolution and audio mode. The runtime checks live model definitions before creating tasks. A storyboard is a general image reference, not a first-frame constraint. Video prompts must still prohibit storyboard grids and labels. The MCP exposes no watermark switch; `no watermark` is a semantic prompt instruction, not a guaranteed postprocessing control.
 

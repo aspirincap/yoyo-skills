@@ -2,23 +2,25 @@
 
 This branch routes `standard-product-image`, `product-detail-page-pipeline`, `script-to-storyboard-video` and `product-to-ugc-video` through AI Creative MCP. It does not call NewAPI, OpenAI image endpoints or Gemini generation endpoints. `open-tiktok-script` separately uses the SpotMax `describe_video` HTTP API; see its own README for local-test versus production authentication. The remaining skills keep their original backends.
 
-## Setup
+## Connection selection
 
-Use Python 3.11+ and Pillow (`python3 -m pip install Pillow`). Video assembly also uses ffmpeg/ffprobe. Each of the four skills bundles its own runtime, so it can be installed individually.
+Prefer the AI Creative MCP tools already available to the calling agent. Discover the platform's tool namespace (normally `aicreative`; hosts may expose an alias) and use `list_models`, `get_model_parameters`, `upload_media`, `submit_generation_task` and `get_generation_task` through that same connection. Do not switch account/environment merely to find a particular tool prefix. A successful `list_models` confirms that model discovery works on that connection; generation still uses its actual server permissions and the credit confirmation below.
 
-If Codex already has an HTTP MCP server named `aicreative`, the runtime reads its URL and authentication from `~/.codex/config.toml`. It does not copy or print the Token. The configured URL determines the environment (Beta or production). `AICREATIVE_MCP_SERVER` selects another server name; `AICREATIVE_CODEX_CONFIG` selects another TOML file.
+**Platform tools and the bundled Python CLI are independent transports.** If platform tools work, a missing CLI URL, Token or `~/.codex/config.toml` is not an authorization failure and is not a reason to stop. Use the tools directly; do not extract a connector Token, request it again, demand that Runtime inject it into scripts, or run CLI `check` as a prerequisite. A real permission error from a platform tool should be reported as that tool's error.
 
-Outside Codex, configure these environment variables through your secret manager or shell environment:
+### Standalone CLI setup (optional)
 
-- `AICREATIVE_MCP_URL`: the full MCP endpoint, e.g. `https://aicreative-api-beta.creatiads.com/api/mcp`.
+Use the CLI when platform tools are unavailable or a configured local workflow is preferred. Python 3.11+ and Pillow are required; video assembly also uses ffmpeg/ffprobe. Each skill bundles its runtime and can be installed individually. The CLI cannot inherit an opaque platform connector session.
+
+The CLI can read an HTTP server named `aicreative` from `~/.codex/config.toml`, without printing its Token. The configured endpoint selects Beta or production. `AICREATIVE_MCP_SERVER` selects another server name; `AICREATIVE_CODEX_CONFIG` selects another TOML file. Alternatively, configure through your existing secret manager or environment:
+
+- `AICREATIVE_MCP_URL`: the full MCP endpoint.
 - `AICREATIVE_MCP_TOKEN`: the authorized Token, with or without the `Bearer ` prefix.
 - `AICREATIVE_MCP_PARENT_ORIGIN`: optional `X-Embed-Parent-Origin` required by your deployment.
-- `AICREATIVE_IMAGE_MODEL_ID`: numeric image `modelConfigId`; Beta default `2102` (Seedream 4.5).
-- `AICREATIVE_VIDEO_MODEL_ID`: numeric video `modelConfigId`; storyboard/direct video default `1103` (Seedance 2.0), character-led UGC default `1108` (Wan 2.7, person references + both frame anchors, native audio ON required).
+- `AICREATIVE_IMAGE_MODEL_ID`: image `modelConfigId`; tested Beta default `2102` (Seedream 4.5).
+- `AICREATIVE_VIDEO_MODEL_ID`: video `modelConfigId`; storyboard default `1103` (Seedance 2.0), character-led UGC default `1108` (Wan 2.7).
 
-An explicit endpoint override does not inherit credentials from a different Codex endpoint. `AI_GATEWAY_*` and legacy gateway credentials are not consulted by these four skills.
-
-From an installed skill directory, check connectivity and discover current model capabilities:
+An explicit endpoint override does not inherit credentials from a different endpoint. Legacy gateway credentials are not consulted. These commands diagnose only the local CLI:
 
 ```bash
 python3 scripts/aicreative_mcp.py check
@@ -26,41 +28,59 @@ python3 scripts/aicreative_mcp.py models --type IMAGE
 python3 scripts/aicreative_mcp.py models --type VIDEO
 ```
 
-The defaults reflect the tested Beta account; use model IDs available to your account. The runtime reads `get_model_parameters` before new submissions and checks prompt length, image count/known dimensions/pixel count, frame requirements, duration and parameter enums. Omitted image resolution is filled from the model's declared default and persisted in the task journal, because the tested server rejects an omitted `resolutionKey`.
+For either transport, select model IDs available to the connected account and read current parameter definitions. Check prompt length, reference count/dimensions, frames, duration, ratio, resolution and audio support. Set the declared default `resolutionKey` explicitly if omitted; the tested server requires it. Native requests must also set `count`, the intended aspect ratio and `publicVisibilityKey: "OFF"` explicitly unless the user requests public results; do not inherit a server default of `ON`. Do not assume Beta defaults exist on another deployment.
 
 ## Credit approval gate
 
-Before each new paid batch, disclose **“大约需要消耗 xx 积分”** and wait for the user's explicit agreement to that estimate. Compute `xx = sum(current model minPoints × requested output count)` across the new jobs. This is an approximation based on starting credits, not an exact quote or a spending cap; resolution, duration and audio may affect the actual charge. Do not invent per-second pricing. Missing or invalid `minPoints` blocks submission. Historical unlimited-spend permission and creative/content approval do not replace this confirmation.
+The gate is **disclose the batch's estimated credits, then obtain the user's agreement before submission**. It does not require a particular transport or a special approval file. Compute `xx = sum(current model minPoints × new output count)` and say **“大约需要消耗 xx 积分”**, followed by “按模型起步积分估算，实际扣费可能随参数变化”. This is not an exact quote or spending cap. Use `minPoints` returned by `list_models` or `get_model_parameters`; if absent/invalid, fetch the missing price before submission. A returned zero is only a starting estimate, not a promise of free generation.
 
-Prepare prompts, inputs and parameters, then run the normal generation command. Without credit approval it writes a review JSON plus a readable `.md`, prints the estimate, exits nonzero with `Credit approval required`, and submits **zero** generation tasks. Read-only model checks and reference binding can happen beforehand. `--dry-run` remains offline and does not fetch prices or require approval.
+Show the batch contents, models, counts and relevant parameters with the estimate. Wait for an actual affirmative user reply; connection authorization or historical unlimited-spend permission alone does not approve this estimate. One reply can cover both creative approval and credits when both were presented together. An existing agreement to this same batch remains valid after a connection repair or a switch of transport; do not ask twice.
 
-| Flow | Approval scope | Default review file |
-| --- | --- | --- |
-| Direct image/video CLI, including standard product image | One request, including `--count` outputs | `<journal>.credits.json` |
-| Detail page | All selected pages | `<output-dir>/generation.credits.json` |
-| Storyboard | All storyboard sheets | `<project-dir>/storyboard.credits.json` |
-| Storyboard video | All video segments, separately from storyboards | `<project-dir>/video.credits.json` |
-| UGC | Character reference, keyframes and video segments together | `<project-dir>/generation.credits.json` |
+| Flow | Estimate scope |
+| --- | --- |
+| Standard product image | Requested new images |
+| Detail page | All selected pages, alongside their content review |
+| Storyboard | All new storyboard sheets |
+| Storyboard video | New video segments, after storyboard review |
+| UGC | New character reference, keyframes and video segments; exclude existing/skipped outputs |
 
-Show the batch contents, models, counts and estimate to the user. **Only after their actual affirmative reply**, record it locally:
+### Native MCP workflow (preferred)
+
+1. Reuse prepared prompts and assets. Call `list_models` / `get_model_parameters` through the connected platform tools; no CLI configuration check is needed. Preserve the user's requested model when available.
+2. Resolve references through that same connection. Reuse returned asset IDs or call `upload_media` with an authorized, accessible media URL. Local byte uploads are not exposed; see the reference section below. Do not treat an unresolved local reference as an account authorization error.
+3. Disclose the estimate for all new jobs in the current stage and obtain agreement. Conversation history is sufficient evidence; note the estimate, scope and actual reply in the existing project log. **Neither a CLI receipt nor `approve-credits` is required.** Never invent a user reply.
+4. Call the platform's `submit_generation_task` directly for each approved job, using the tool's current schema. This is the supported native path, not a bypass. Before each call, persist its request and unique `clientRequestId` in the project log; afterwards record `taskId`. Do not start new jobs beyond the approved scope.
+5. Query `get_generation_task` for accepted jobs, preserve result asset IDs and URLs, download outputs when needed and update the project's manifests. During `PROCESSING`, an item error can be historical; use the aggregate status. Report incomplete results without silently regenerating them.
+
+Keep the connection/transport label, model, actual parameters, prompt/reference identifiers, estimate, user reply, `clientRequestId`, `taskId`, result assets, status and elapsed time in ordinary project logs. Never store connector credentials. Native logs need not imitate CLI hash receipts. Use the same filenames/output structure expected by each skill; only mark a file or task complete when it actually exists/succeeds. Do not pass native task logs off as CLI resume journals or re-run a submitting CLI over them.
+
+On a lost submission response, reuse the same `clientRequestId` on the same connection, with the same request, to recover the accepted task. If switching transports and the account/environment cannot be verified as the same, resolve the existing task first rather than blindly replaying it. Query/download retries do not require new credit approval. A fresh paid retry after failure is a new job and needs an estimate and agreement.
+
+Adding paid jobs, changing model/count/charge-affecting parameters or increasing the estimate requires an updated disclosure and agreement. A transport switch, output-path cleanup or equivalent prompt wording within the same approved scope does not. Material creative/reference/public-visibility changes still follow the user's content requirements. Preserve storyboard review before video and detail-page review before image generation on both paths.
+
+### CLI credit receipts (only for CLI execution)
+
+Run the usual command to prepare a review JSON and readable `.md`. Without approval it prints the estimate, exits with `Credit approval required` and submits zero tasks. `--dry-run` remains offline. After the user agrees, record their existing reply and rerun the same command:
 
 ```bash
 python3 scripts/aicreative_mcp.py approve-credits \
   --review /absolute/path/generation.credits.json \
-  --confirmation '<actual affirmative user reply after seeing the estimate>'
+  --confirmation '<actual affirmative user reply to the displayed estimate>'
 ```
 
-Then rerun the original command with the same project/output/journal. Batch wrappers pass `--credit-review` to their child tools automatically. There is no automatic approval or `--yes` generation flag. Do not call `approve-credits` proactively, fabricate the user's reply, or bypass this flow with a raw `submit_generation_task` call. The receipt records human approval; it is a local workflow guard, not a server-side billing limit or a cryptographic proof of human identity.
+Default files are `<journal>.credits.json` for direct image/video commands, `<output-dir>/generation.credits.json` for detail pages, `<project-dir>/storyboard.credits.json` / `video.credits.json` for storyboard stages, and `<project-dir>/generation.credits.json` for UGC. Batch wrappers pass `--credit-review` to their child tools. There is no self-approval or `--yes` generation flag.
 
-Approval covers the disclosed plan, account, current starting prices and source-file content. Changes require a fresh review and user agreement. A shared receipt claims one persisted `clientRequestId` per approved job, including concurrent segments. Lost-response retries reuse that ID. Existing accepted tasks can be queried/downloaded without another approval; new attempts after failure use new outputs/journals and require new approval. Preserve journals and receipts for recovery.
+CLI receipts bind exact jobs, account, prices and source contents to persisted request IDs to prevent duplicate submissions. Rebuild a stale receipt if necessary; re-record an already valid user reply only when the batch, cost and consent scope are unchanged. For a material change, get a new agreement. Keep journals/receipts for recovery. If this CLI is unconfigured but native tools work, continue with the native workflow above instead of trying to manufacture CLI credentials or hash receipts.
 
-The detail-page creative approval and storyboard `--confirmed` checks remain separate. `--skip-backend-check` cannot skip the credit gate. Detail-page custom `--image-tool` paths are allowed only with the non-executing `--dry-run`, because a custom tool may ignore preview/approval flags.
+The CLI's detail-page creative approval and storyboard `--confirmed` checks remain. `--skip-backend-check` cannot skip its credit gate. Custom detail-page `--image-tool` paths remain restricted to non-executing `--dry-run`; native MCP is a separate supported agent workflow, not a custom executable override.
 
 ## Local references: bind once, reuse by content
 
 MCP `upload_media` imports an accessible HTTPS URL. It does **not** upload local bytes, accept base64 or expose a local upload endpoint. Do not invent an endpoint or silently publish local files to an unrelated hosting service.
 
-For a local source image already present in AI Creative, bind the file to its matching asset in your account:
+With native tools, use matching asset IDs directly; no CLI binding/cache is required. Import an existing accessible reference URL with `upload_media`, preserving the returned asset ID for later calls. For local-only files, use an already authorized upload/hosting route or request the missing accessible source, not another account login.
+
+For the CLI path, bind a local source image to its matching asset in your account:
 
 ```bash
 python3 scripts/aicreative_mcp.py bind --file /absolute/path/product.png --asset-id 123
@@ -105,7 +125,7 @@ Use `--image` for general references, or `--first-frame`/`--last-frame` for anch
 
 `--dry-run` makes no network calls and does not require credentials or bindings. It shows unresolved references explicitly; live validation still happens before a real submission.
 
-## Recovery and output contracts
+## CLI recovery and output contracts
 
 - The response JSON is a resumable task journal: request, `clientRequestId`, `taskId`, model configuration, observations and downloaded assets. Credentials are excluded.
 - Repeat the **same command with the same output and journal** to resume. An accepted submission whose response was lost is replayed with the same persisted ID. A polling timeout does not submit a second task.

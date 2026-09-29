@@ -24,6 +24,18 @@
       "prompt": "我已经有完整广告脚本，先给我生成故事板审核，通过后再生成视频。",
       "expected_output": "The assistant should route this existing-script, approval-gated request to script-to-storyboard-video rather than the character-led UGC workflow.",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "平台 aicreative/list_models 已成功；Python 生成器说未配置连接。我已同意刚才展示的本批方案和预计积分，请用现有授权继续。",
+      "expected_output": "Use the connected native AI Creative tools directly, preserve prepared prompts/assets and existing approved scope, record request/task IDs and resume without requesting a Token, CLI check, runtime credential injection, CLI credit receipt or repeated credit approval. Preserve this skill's creative/stage review. Do not re-submit accepted tasks.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "MCP 已授权，先生成吧。上下文中尚未告知本批预计积分，也没有费用确认。",
+      "expected_output": "Fetch current model minPoints and parameters through native MCP, prepare and show the batch estimate, then wait for agreement before submit_generation_task. Connection authorization alone is not credit approval. Do not force CLI configuration.",
+      "files": []
     }
   ]
 }

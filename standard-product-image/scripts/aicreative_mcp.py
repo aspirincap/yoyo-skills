@@ -84,7 +84,12 @@ def load_config(url=None):
         server = tomllib.loads(config_path.read_text()).get("mcp_servers", {}).get(server_name, {})
     endpoint = url or os.getenv("AICREATIVE_MCP_URL") or server.get("url")
     if not endpoint:
-        raise MCPError("Configure AICREATIVE_MCP_URL + AICREATIVE_MCP_TOKEN, or a Codex aicreative HTTP server")
+        raise MCPError(
+            "Local CLI MCP connection is not configured. This does not describe the platform's MCP authorization. "
+            "If AI Creative tools are available in the current session, use them directly after the user approves "
+            "the disclosed credit estimate; CLI configuration and approve-credits are not required for that path. "
+            "For standalone CLI use, configure AICREATIVE_MCP_URL + AICREATIVE_MCP_TOKEN or a Codex aicreative HTTP server."
+        )
     https_url(endpoint)
     headers = {}
     if endpoint == server.get("url"):
@@ -103,7 +108,11 @@ def load_config(url=None):
         headers["x-embed-parent-origin"] = os.environ["AICREATIVE_MCP_PARENT_ORIGIN"]
     headers.setdefault("language", "zh")
     if not headers.get("authorization"):
-        raise MCPError("AI Creative MCP authentication is missing; gateway credentials are not used")
+        raise MCPError(
+            "Local CLI authentication is missing; this does not mean the platform MCP connection is unauthorized. "
+            "Use the platform's AI Creative tools directly after credit confirmation if available. "
+            "Do not extract their Token for this CLI. Gateway credentials are not used."
+        )
     return endpoint, headers
 
 

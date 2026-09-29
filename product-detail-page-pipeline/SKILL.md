@@ -9,17 +9,17 @@ Build a coherent detail-page image set as a production workflow. Start with the 
 
 Planning works without external services. Offline generation orchestration requires Python 3.11+. Local contact-sheet and long-page assembly require Pillow. Real generation uses the bundled AI Creative MCP client. Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for configuration, local source-image bindings and recovery.
 
-## 积分确认门禁（必须执行）
+## 积分确认与连接选择
 
-正式提交任何新的 AI Creative 生成任务前，先准备提示词、素材和参数，运行下方的正常生成命令。未确认时运行器只读取模型配置、写出 `*.credits.json` 和配套 `.md`，随后以 `Credit approval required` 停止，不会提交生成任务。
+优先使用当前会话已连接的 AI Creative MCP 工具。平台连接与 Python CLI 的本地配置是两个独立入口：原生 `list_models` 成功即可继续读取模型参数和准备任务，不需要先运行 CLI `check`，也不需要向用户索要 Token。CLI 报“未配置”不代表平台未授权；有原生工具时直接走原生路径，不要求平台把凭证交给脚本。
 
-按所选页面整批汇总；保留逐页内容审阅和原有生图确认，内容确认不能替代积分确认。
+提交前说明本批次内容、模型、数量及关键参数，并告知 **“大约需要消耗 xx 积分”**；xx = 当前模型 `minPoints × 本批新增生成数量` 之和，注明“按模型起步积分估算，实际扣费可能随参数变化”。从原生 `list_models` / `get_model_parameters` 或 CLI 读取起步积分；缺失时只补查该信息，不编造价格。
 
-向用户说明本批次内容、模型和数量，并告知：**“大约需要消耗 xx 积分”**。xx 使用当前模型 `minPoints × 生成数量` 累加；补充“按模型起步积分估算，实际扣费可能随参数变化”。不得称为准确报价或扣费上限。读取不到起步积分时停止，不猜测免费或沿用硬编码价格。
+用户明确同意已展示的本批次方案及预计积分后即可提交。原生路径允许直接调用 `submit_generation_task`，会话中的确认就是依据，不要求 `*.credits.json`、`approve-credits` 或 CLI 连通性检查。把估算、实际回复及任务 ID 记录在现有项目日志即可，不新增专用凭证审批。CLI 路径仍用 `approve-credits` 记录同一条用户回复，不再为生成确认文件询问用户。
 
-等待用户明确同意本次已告知的预估后，才可用 `scripts/aicreative_mcp.py approve-credits --review <本次确认文件> --confirmation '<用户实际回复>'` 记录同意，并重跑原命令。不能自行确认，也不能把历史的“不限积分”、生成请求或内容审阅当作对本次积分的确认。用户拒绝或未回复时不提交。
+按所选页面汇总预计积分；保留逐页内容审阅，可以在展示完整页面方案时一并告知积分，让用户一次明确批准开始生图和费用。
 
-任务数量、模型、提示词、素材、参数（含时长、分辨率、声音、公开开关）或账户变化，需要重新告知并确认。已获批任务的同一 `clientRequestId` 重试，以及查询、下载已有任务无需重复确认；新增任务和失败后的重新生成仍需确认。禁止通过直接调用 MCP `submit_generation_task`、改用其他脚本或自行写入确认文件绕过门禁。纯规划和 `--dry-run` 不收费、不需要确认。详细操作见 [MCP 积分门禁](references/aicreative-mcp.md#credit-approval-gate)。
+同一批次、同一账户、同一费用范围内，切换原生/CLI、修复连接、整理输出路径或等义润色提示词不需要重复确认。新增付费任务、变更模型/数量/计费参数或提高预估时，再告知变化并确认；内容、素材、公开范围的实质变化按用户要求确认。已接受的任务只查询或下载，提交结果不明时保留同一 `clientRequestId`，不另建任务。只读查询、规划与离线预览无需积分确认。用户未同意或拒绝时不提交；连接授权、过去的“不限积分”不替代本批次费用同意。详细操作见 [原生 MCP 与积分确认](references/aicreative-mcp.md#credit-approval-gate)。
 
 ## Boundary
 
@@ -131,7 +131,9 @@ If the user changes any page, update `07_prompt_pack.json`, regenerate the revie
 
 ### 9. Record explicit approval
 
-Only after receiving explicit generation approval, bind it to the exact reviewed Prompt Pack:
+For native MCP, record the approved page scope, estimate and actual reply in the existing project log; the reviewed Prompt Pack remains the source of truth. No CLI approval file or hash receipt is required. A single explicit agreement to begin generation can cover both the page review and credits when shown together.
+
+For CLI execution, only after receiving explicit generation approval, bind it to the exact reviewed Prompt Pack:
 
 ```bash
 python3 scripts/record_generation_approval.py \
@@ -158,11 +160,13 @@ python3 scripts/run_image_generation.py \
   --only-screen 1 --only-screen 2 --only-screen 3
 ```
 
-Never create this file preemptively. Any Prompt Pack edit changes its SHA-256 and invalidates the approval; export and show a new review, then ask for explicit approval again.
+Never create this file preemptively. Material page changes require a new content review. The CLI also invalidates receipts on any Prompt Pack hash change; formatting/path-only changes within the same approved scope can reuse the actual user reply when rebuilding the review/receipt, without another user question.
 
 ### 10. Per-screen generation
 
-Use dry-run before spending quota; dry-run never counts as approval and makes no provider call:
+Prefer native MCP when connected: fetch model parameters, resolve each page's authorized reference assets, and submit one IMAGE job per approved page after credit agreement. Use the final text/layout from `07_prompt_pack.json`, preserve original server bytes and save complete pages under `generated/images/screen_XX.*`. Maintain `generation_manifest.json` with page IDs, prompts, parameters, task IDs, result assets, paths and actual status. Then use the local assembly step below. This path needs neither CLI preflight nor `generation_approval.json`; missing local credentials must not block it.
+
+For configured CLI execution, use dry-run before spending quota; dry-run never counts as approval and makes no provider call:
 
 ```bash
 python3 scripts/run_image_generation.py \
@@ -171,7 +175,7 @@ python3 scripts/run_image_generation.py \
   --dry-run
 ```
 
-Reuse the configured AI Creative MCP server and bind source references before generation:
+For the CLI path, reuse its configured AI Creative MCP server and bind source references before generation:
 
 ```bash
 python3 scripts/aicreative_mcp.py check
@@ -259,7 +263,7 @@ generation_review/
 - Preserve missing-reference and failed-screen states rather than silently substituting unrelated images.
 - In the approval-bound runner, use `--extra` only for a documented deterministic `seed`; core request fields and unknown extras are rejected.
 - Always show every planned page and wait for explicit generation approval before any real image-model call.
-- Treat plan changes as approval-invalidating changes; never reuse an approval for a modified Prompt Pack.
+- Material page-content or scope changes need a new review; do not reuse approval for different content. Formatting/path-only changes do not require a new user confirmation.
 - Never interpret `继续`, `可以`, `OK`, silence or a request to adjust pages as permission to generate images.
 - Never repair model text with CSS, HTML, SVG, Pillow drawing or another text-overlay layer. Regenerate only the failed screen with a shorter copy or stricter verbatim text instruction.
 - Never generate the complete detail page as one image. Generate screens independently, then stitch locally.
