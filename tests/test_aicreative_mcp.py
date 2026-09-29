@@ -45,6 +45,13 @@ class Validation(unittest.TestCase):
         self.request['frame']['firstFrame']={'assetId':1};self.request['imageAssets']=[{'assetId':1}]
         with self.assertRaises(mcp.MCPError):mcp.validate(self.request,model(),[])
 
+    def test_total_pixel_limit_without_dimension_limits(self):
+        spec=model();spec['inputSettings']['image']={'visibility':True,'maxCount':14,'maxPixels':36000000}
+        self.request['imageAssets']=[{'assetId':1}]
+        with self.assertRaisesRegex(mcp.MCPError,'pixel-count'):
+            mcp.validate(self.request,spec,[{'metadata':{'width':7000,'height':7000}}])
+        mcp.validate(self.request,spec,[{'metadata':{'width':6000,'height':6000}}])
+
     def test_safe_configuration_and_urls(self):
         with tempfile.TemporaryDirectory() as tmp:
             cfg=Path(tmp)/'config.toml'
@@ -115,6 +122,50 @@ class Workflows(unittest.TestCase):
         result=self.image(ok=False)
         self.assertIn('Local reference is not bound',result.stderr)
         self.assertEqual(len(self.server()['tasks']),0)
+
+    def test_image_resolves_model_default_and_preserves_it_on_resume(self):
+        self.bind();self.env['YOYO_FAKE_RESOLUTION_DEFAULT']='4K'
+        self.image()
+        request=next(iter(self.server()['tasks'].values()))['request']
+        self.assertEqual(request['parameters']['resolutionKey'],'4K')
+        self.env['YOYO_FAKE_RESOLUTION_DEFAULT']='2K'
+        self.image()
+        self.assertEqual(len(self.server()['tasks']),1)
+
+    def test_explicit_resolution_overrides_model_default(self):
+        self.bind();self.image('--resolution','4K')
+        request=next(iter(self.server()['tasks'].values()))['request']
+        self.assertEqual(request['parameters']['resolutionKey'],'4K')
+
+    def test_invalid_output_suffix_fails_before_submission(self):
+        self.bind()
+        result=self.run_cli('standard-product-image/scripts/image_tool.py','edit','--prompt','Preserve product',
+            '--image',self.product,'--output',self.root/'invalid.gif',ok=False)
+        self.assertIn('Image output must use',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),0)
+
+    def test_ugc_merge_failure_returns_failure_and_keeps_segments(self):
+        self.bind();bin_dir=self.root/'bin';bin_dir.mkdir();ffmpeg=bin_dir/'ffmpeg'
+        ffmpeg.write_text('#!/bin/sh\nif [ "$1" = "-version" ]; then exit 0; fi\necho "simulated merge failure" >&2\nexit 17\n')
+        ffmpeg.chmod(0o755);self.env['PATH']=str(bin_dir)+os.pathsep+self.env['PATH']
+        self.run_cli('product-to-ugc-video/scripts/product_to_ugc.py','--product-image',self.product,
+            '--description','A white mug','--segment-count','1','--segment-duration','4','--heuristic-plan',
+            '--project-dir',self.root/'ugc','--poll-interval','0',ok=False)
+        manifest=json.loads((self.root/'ugc/manifests/merge_manifest.json').read_text())
+        self.assertIn('simulated merge failure',manifest['merge_error'])
+        self.assertTrue(all(Path(p).is_file() for p in manifest['segment_files']))
+
+    def test_ugc_same_basename_inputs_remain_distinct_and_can_be_reused(self):
+        other=self.root/'other';other.mkdir();character=other/self.product.name
+        Image.new('RGB',(384,384),'green').save(character)
+        base=['--description','White mug','--heuristic-plan','--planner-only','--project-dir',self.root/'ugc']
+        script='product-to-ugc-video/scripts/product_to_ugc.py'
+        self.run_cli(script,'--product-image',self.product,'--character-reference',character,*base)
+        project=json.loads((self.root/'ugc/project.json').read_text())
+        self.assertEqual(Path(project['product_image']).read_bytes(),self.product.read_bytes())
+        self.assertEqual(Path(project['character_reference_input']).read_bytes(),character.read_bytes())
+        self.assertNotEqual(project['product_image'],project['character_reference_input'])
+        self.run_cli(script,'--product-image',project['product_image'],'--character-reference',project['character_reference_input'],*base)
 
     def test_bind_by_source_and_copy_by_content_hash(self):
         self.run_cli('standard-product-image/scripts/aicreative_mcp.py','bind','--file',self.product,'--source-url','https://media.test/input.jpg')
@@ -188,10 +239,26 @@ class Workflows(unittest.TestCase):
         tasks=[t['request'] for t in self.server()['tasks'].values()]
         self.assertEqual(len(tasks),4)
         self.assertEqual([len(t.get('imageAssets',[])) for t in tasks if t['generationType']=='IMAGE'],[1,2,3])
+        self.assertTrue(all(t['parameters']['aspectRatioKey']=='9:16' for t in tasks if t['generationType']=='IMAGE'))
         video=next(t for t in tasks if t['generationType']=='VIDEO')
         self.assertEqual(set(video['frame']),{'firstFrame','lastFrame'})
         self.assertNotIn('imageAssets',video)
-        self.assertEqual(video['parameters']['generateAudioKey'],'OFF')
+        self.assertEqual(video['parameters']['generateAudioKey'],'ON')
+
+    def test_ugc_rejects_incompatible_person_model_before_image_generation(self):
+        self.bind();self.env['YOYO_FAKE_NO_PERSON']='1'
+        result=self.run_cli('product-to-ugc-video/scripts/product_to_ugc.py','--product-image',self.product,
+            '--description','A mug','--segment-count','1','--heuristic-plan','--project-dir',self.root/'ugc',ok=False)
+        self.assertIn('supports person references',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),0)
+
+    def test_ugc_rejects_unsupported_audio_before_image_generation(self):
+        self.bind()
+        result=self.run_cli('product-to-ugc-video/scripts/product_to_ugc.py','--product-image',self.product,
+            '--description','A mug','--segment-count','1','--heuristic-plan','--project-dir',self.root/'ugc',
+            '--video-model','1108','--no-generate-audio',ok=False)
+        self.assertIn('unsupported generateAudioKey',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),0)
 
     def test_detail_page_approval_and_real_adapter(self):
         pack=self.root/'pack.json'

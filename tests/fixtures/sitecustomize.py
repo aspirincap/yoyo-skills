@@ -19,17 +19,18 @@ if os.getenv('YOYO_FAKE_MCP_STATE'):
     Image.new('RGB',(384,384),'red').save(buf,format='JPEG')
     media=buf.getvalue()
 
-    def spec(kind):
+    def spec(kind,model_id=None):
         enum=lambda values:{'visibility':True,'values':[{'value':v} for v in values]}
         return {'modelType':kind.lower(),'inputSettings':{
+            'supportRealPerson':not bool(os.getenv('YOYO_FAKE_NO_PERSON')),
             'text':{'minCount':1,'maxCount':5000},
             'image':{'visibility':True,'maxCount':14,'minWidth':300,'minHeight':300},
             'frame':{'visibility':True,'type':'FIRST_LAST','forbiddenInputs':['image'],'minWidth':300,'minHeight':300}},
             'outputSettings':{'count':{'visibility':False,'minCount':1,'maxCount':6},
                               'duration':{'visibility':True,'minCount':4,'maxCount':15},
-                              'resolution':enum(['720P','1080P','2K']),
+                              'resolution':{**enum(['720P','1080P','2K','4K']), 'defaultValue':os.getenv('YOYO_FAKE_RESOLUTION_DEFAULT','2K') if kind=='IMAGE' else '720P'},
                               'aspectRatio':enum(['1:1','2:3','3:2','9:16','16:9']),
-                              'generateAudio':{'visibility':True,'values':{'ON':True,'OFF':False}}},
+                              'generateAudio':{'visibility':True,'values':{'ON':True} if model_id==1108 else {'ON':True,'OFF':False}}},
             'businessSettings':{'publicVisibility':enum(['ON','OFF'])}}
 
     class Response(io.BytesIO):
@@ -55,12 +56,13 @@ if os.getenv('YOYO_FAKE_MCP_STATE'):
                 name=payload['params']['name'];args=payload['params']['arguments']
                 state['calls'].append({'name':name,'arguments':args})
                 if name=='get_model_parameters':
-                    value={'model':spec('IMAGE' if args['modelConfigId']>=2000 else 'VIDEO')}
+                    value={'model':spec('IMAGE' if args['modelConfigId']>=2000 else 'VIDEO',args['modelConfigId'])}
                 elif name=='list_models':
                     value={'models':[{'modelConfigId':2102,'modelType':'image','displayName':'Fake'}]}
                 elif name=='upload_media':
                     value={'asset':{'assetId':9000,'url':args['sourceUrl'],'metadata':{'width':384,'height':384}}}
                 elif name=='submit_generation_task':
+                    assert args['parameters'].get('resolutionKey'), 'The live service requires explicit resolutionKey'
                     cid=args['clientRequestId']
                     if cid not in state['tasks']:
                         state['tasks'][cid]={'taskId':'GT_'+str(len(state['tasks'])+1),'request':args,'polls':0}

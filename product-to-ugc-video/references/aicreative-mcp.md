@@ -14,7 +14,7 @@ Outside Codex, configure these environment variables through your secret manager
 - `AICREATIVE_MCP_TOKEN`: the authorized Token, with or without the `Bearer ` prefix.
 - `AICREATIVE_MCP_PARENT_ORIGIN`: optional `X-Embed-Parent-Origin` required by your deployment.
 - `AICREATIVE_IMAGE_MODEL_ID`: numeric image `modelConfigId`; Beta default `2102` (Seedream 4.5).
-- `AICREATIVE_VIDEO_MODEL_ID`: numeric video `modelConfigId`; Beta default `1103` (Seedance 2.0).
+- `AICREATIVE_VIDEO_MODEL_ID`: numeric video `modelConfigId`; storyboard/direct video default `1103` (Seedance 2.0), character-led UGC default `1108` (Wan 2.7, person references + both frame anchors, native audio ON required).
 
 An explicit endpoint override does not inherit credentials from a different Codex endpoint. `AI_GATEWAY_*` and legacy gateway credentials are not consulted by these four skills.
 
@@ -26,7 +26,7 @@ python3 scripts/aicreative_mcp.py models --type IMAGE
 python3 scripts/aicreative_mcp.py models --type VIDEO
 ```
 
-The defaults reflect the tested Beta account; use model IDs available to your account. The runtime reads `get_model_parameters` before new submissions and checks prompt length, image count/known dimensions, frame requirements, duration and parameter enums.
+The defaults reflect the tested Beta account; use model IDs available to your account. The runtime reads `get_model_parameters` before new submissions and checks prompt length, image count/known dimensions/pixel count, frame requirements, duration and parameter enums. Omitted image resolution is filled from the model's declared default and persisted in the task journal, because the tested server rejects an omitted `resolutionKey`.
 
 ## Local references: bind once, reuse by content
 

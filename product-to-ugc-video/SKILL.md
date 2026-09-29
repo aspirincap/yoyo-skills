@@ -60,9 +60,11 @@ If demographic fields are missing, keep them unspecified or choose a product-rel
 
 ## AI Creative MCP backend
 
-Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for authentication, bindings and recovery. Use Python 3.11+ and Pillow; use ffmpeg/ffprobe for video assembly and validation. The default image/video model IDs are 2102/1103, overridable with `AICREATIVE_IMAGE_MODEL_ID` / `AICREATIVE_VIDEO_MODEL_ID`.
+Read [references/aicreative-mcp.md](references/aicreative-mcp.md) for authentication, bindings and recovery. Use Python 3.11+ and Pillow; use ffmpeg/ffprobe for video assembly and validation. The default image/video model IDs are 2102/1108 (Seedream 4.5 / Wan 2.7), overridable with `AICREATIVE_IMAGE_MODEL_ID` / `AICREATIVE_VIDEO_MODEL_ID`. Character-led UGC requires both person-reference and first/last-frame support. Seedance 2.0 rejected realistic generated faces in Beta testing. The runner checks compatibility before generating any images. Wan 2.7 requires native audio ON; `--no-generate-audio` is available only with a model that supports OFF.
 
 Bind the local product image and any supplied character reference to matching AI Creative assets first. Generated character references and frames are automatically reused by asset ID. Keyframe images use product + character + previous-frame references. Videos pass adjacent images explicitly as `frame.firstFrame` / `frame.lastFrame`, never as general `imageAssets` in the same request.
+
+Keep keyframes at the requested video aspect ratio: the tested video backend can follow frame geometry instead of the requested output ratio. For phone-shot UGC, explicitly request a full-frame photograph without a phone device, bezel or screen UI. Inspect references and keyframes for these artifacts before using them in final production; image-generation success alone does not establish visual quality.
 
 This branch does not use AI gateway settings or a text API. The calling agent creates the structured plan and passes `--plan-file`; use `--heuristic-plan` only for the deterministic local fallback. Keep the skill's product and creator continuity checks.
 

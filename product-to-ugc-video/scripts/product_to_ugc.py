@@ -27,11 +27,11 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from aicreative_mcp import model_default
+from aicreative_mcp import Client, MCPError, model_default, validate
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_IMAGE_MODEL = model_default("image")
-DEFAULT_VIDEO_MODEL = model_default("video")
+DEFAULT_VIDEO_MODEL = os.getenv("AICREATIVE_VIDEO_MODEL_ID", "1108")
 DEFAULT_TRIM_TAIL_SECONDS = 0.333
 
 
@@ -62,6 +62,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--aspect-ratio", default="9:16")
     parser.add_argument("--image-model", default=DEFAULT_IMAGE_MODEL)
     parser.add_argument("--video-model", default=DEFAULT_VIDEO_MODEL)
+    parser.add_argument("--generate-audio", action=argparse.BooleanOptionalAction, default=True,
+                        help="Native video audio; the default Wan 2.7 model requires it enabled.")
     parser.add_argument("--project-name")
     parser.add_argument("--project-dir")
     parser.add_argument("--output-root", default="outputs/product_to_ugc")
@@ -116,9 +118,9 @@ def heuristic_plan(args: argparse.Namespace, description: str) -> dict[str, Any]
         beat = beat_names[index] if index < len(beat_names) else "demo"
         action_note = [
             "creator notices the product and begins engaging with it",
-            "creator starts moving naturally and shows how it wears",
-            "creator shifts into a more active moment, emphasizing comfort and breathability",
-            "creator glances at a phone and keeps moving, showing real-life continuity",
+            "creator demonstrates one ordinary use of the product based on the supplied description",
+            "creator shows a visible product detail without inventing a performance claim",
+            "creator continues the same product interaction, showing real-life continuity",
             "creator slows slightly and lands in a confident recommendation pose",
         ]
         progression = action_note[index] if index < len(action_note) else "creator continues the action naturally"
@@ -168,20 +170,20 @@ def heuristic_plan(args: argparse.Namespace, description: str) -> dict[str, Any]
 
     return {
         "concept_title": f"{product_name} character-led UGC",
-        "selected_angle": "A sporty creator naturally demonstrates comfort, breathability, and real-use credibility.",
+        "selected_angle": "A creator demonstrates an ordinary product interaction and visible details.",
         "creator_profile": {
             "identity_summary": f"{args.creator_style}, {args.creator_gender}, age {args.creator_age_range}",
             "appearance_rules": [
                 "Keep the same face, hairstyle, body type, and skin tone in every frame.",
-                "Keep the product color, fit, and silhouette unchanged.",
-                "Keep the creator styling consistent with a modern running lifestyle.",
+                "Keep the product color, structure, and silhouette unchanged.",
+                "Keep creator styling consistent with the supplied creator and scene brief.",
             ],
-            "product_wear_rule": "The product should remain clearly visible as the same garment across all frames.",
-            "scene_rule": "Keep the route, ambient light, and mobile-shot realism consistent while allowing slight time progression.",
+            "product_wear_rule": "The same product should remain clearly visible and be handled as described across all frames.",
+            "scene_rule": "Keep the setting, ambient light, and mobile-shot realism consistent while allowing slight time progression.",
         },
         "character_reference_prompt": (
             f"Create a photoreal vertical UGC creator portrait of a {args.creator_style}, {args.creator_gender}, "
-            f"age {args.creator_age_range}, in {args.scene_setting}. She is wearing or holding {product_name}. "
+            f"age {args.creator_age_range}, in {args.scene_setting}. The creator is demonstrating {product_name} as described. "
             f"Preserve product details from the reference image. Product description: {description}. "
             "The shot should feel like a premium but natural creator reference photo, clean face visibility, mobile-shot realism."
         ),
@@ -241,7 +243,8 @@ def ensure_file(path: pathlib.Path) -> pathlib.Path:
 
 def copy_input_file(source: pathlib.Path, target: pathlib.Path) -> pathlib.Path:
     target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, target)
+    if source.resolve() != target.resolve():
+        shutil.copy2(source, target)
     return target.resolve()
 
 
@@ -309,9 +312,9 @@ def planner_metadata(plan: dict[str, Any]) -> dict[str, Any]:
 
 def image_size_for_ratio(ratio: str) -> str:
     if ratio == "9:16":
-        return "1024x1536"
+        return "1152x2048"
     if ratio == "16:9":
-        return "1536x1024"
+        return "2048x1152"
     return "1024x1024"
 
 
@@ -403,6 +406,8 @@ def build_image_edit_command(
         "--timeout",
         str(args.image_timeout),
     ]
+    if not args.image_size:
+        cmd.extend(["--ratio", args.aspect_ratio])
     for image_path in reference_images:
         cmd.extend(["--image", str(image_path)])
     return cmd
@@ -422,7 +427,7 @@ def build_video_command(
         sys.executable, str(pathlib.Path(__file__).parent / "generate_video.py"),
         "--model", model_name, "--prompt-file", str(prompt_path),
         "--duration", str(segment.get("duration_seconds", args.segment_duration)),
-        "--ratio", args.aspect_ratio, "--no-generate-audio",
+        "--ratio", args.aspect_ratio, "--generate-audio" if args.generate_audio else "--no-generate-audio",
         "--first-frame", str(from_frame), "--last-frame", str(to_frame),
         "--output", str(output_path), "--save-json", str(json_path),
         "--poll-interval", str(args.poll_interval), "--max-polls", str(args.max_polls),
@@ -491,7 +496,7 @@ def main(argv: list[str] | None = None) -> int:
     if character_reference_input:
         copied_character_input = copy_input_file(
             character_reference_input,
-            paths["inputs"] / character_reference_input.name,
+            paths["inputs"] / "character_reference" / character_reference_input.name,
         )
     write_text(paths["inputs"] / "description.txt", description + "\n")
 
@@ -502,6 +507,19 @@ def main(argv: list[str] | None = None) -> int:
         planner_used = "heuristic"
         plan = heuristic_plan(args, description)
     validate_plan(plan, args.segment_count)
+    if not (args.dry_run or args.planner_only or args.skip_video_generation):
+        try:
+            model = Client().call("get_model_parameters", {"modelConfigId": int(args.video_model)})["model"]
+            if model.get("inputSettings", {}).get("supportRealPerson") is not True:
+                raise MCPError("Character-led UGC requires a video model that supports person references; select a compatible --video-model (tested Beta: 1108).")
+            for segment in plan["segments"]:
+                validate({"generationType": "VIDEO", "prompt": segment["video_prompt"],
+                          "frame": {"firstFrame": {"assetId": 1}, "lastFrame": {"assetId": 2}},
+                          "parameters": {"count": 1, "duration": segment.get("duration_seconds", args.segment_duration),
+                                         "aspectRatioKey": args.aspect_ratio, "resolutionKey": "720P",
+                                         "generateAudioKey": "ON" if args.generate_audio else "OFF", "publicVisibilityKey": "OFF"}}, model, [])
+        except (MCPError, ValueError) as exc:
+            raise SystemExit(str(exc)) from None
     save_plan_artifacts(plan, paths, planner_used)
 
     project_metadata = {
@@ -520,6 +538,7 @@ def main(argv: list[str] | None = None) -> int:
         "aspect_ratio": args.aspect_ratio,
         "segment_count": args.segment_count,
         "segment_duration": args.segment_duration,
+        "generate_audio": args.generate_audio,
         "dry_run": args.dry_run,
         "product_image": str(copied_product),
         "character_reference_input": str(copied_character_input) if copied_character_input else None,
@@ -721,6 +740,9 @@ def main(argv: list[str] | None = None) -> int:
 
     write_json(paths["manifests"] / "merge_manifest.json", merge_manifest)
     write_json(paths["logs"] / "command_log.json", command_log)
+    if merge_manifest.get("merge_error"):
+        print(merge_manifest["merge_error"], file=sys.stderr)
+        return 1
     return 0
 
 

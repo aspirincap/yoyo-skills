@@ -275,6 +275,9 @@ def validate(request, model, assets):
     media_spec = inputs.get("frame" if frame else "image", {})
     for asset in assets:
         dimensions = asset.get("metadata") or {}
+        width, height = dimensions.get("width"), dimensions.get("height")
+        if width is not None and height is not None and width * height > media_spec.get("maxPixels", float("inf")):
+            raise MCPError("reference image exceeds model pixel-count limit")
         for axis in ["Width", "Height"]:
             value = dimensions.get(axis.lower())
             if value is not None and not media_spec.get("min"+axis, 0) <= value <= media_spec.get("max"+axis, float("inf")):
@@ -363,7 +366,7 @@ def generate(*, kind, model, prompt, parameters, references, first_frame=None, l
         raise MCPError("lastFrame requires firstFrame")
     if first_frame and references:
         raise MCPError("Use frame anchors or reference images, not both")
-    request = {"generationType": kind, "modelConfigId": int(model), "prompt": prompt, "parameters": parameters}
+    request = {"generationType": kind, "modelConfigId": int(model), "prompt": prompt, "parameters": dict(parameters)}
     if dry_run:
         print(json.dumps({"provider": "aicreative-mcp", "tool": "submit_generation_task", "argumentsBeforeAssetResolution": request,
                           "referenceInputs": references, "firstFrameInput": first_frame, "lastFrameInput": last_frame,
@@ -375,6 +378,8 @@ def generate(*, kind, model, prompt, parameters, references, first_frame=None, l
         except ImportError:
             raise MCPError("Pillow is required for image output; install the skill requirements first") from None
     output = Path(output).resolve()
+    if kind == "IMAGE" and output.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+        raise MCPError("Image output must use .png, .jpg, .jpeg or .webp")
     journal = Path(journal).resolve() if journal else output.with_suffix(output.suffix+".mcp.json")
     if output == journal:
         raise MCPError("Output and journal paths must differ")
@@ -391,6 +396,15 @@ def generate(*, kind, model, prompt, parameters, references, first_frame=None, l
             records = list(anchors.values())
             request["frame"] = {k: {field: a[field] for field in ["assetId", "url"] if field in a} for k, a in anchors.items()}
         state = json.loads(journal.read_text()) if journal.exists() else None
+        if state:
+            # Reuse the originally resolved default even if the server default changes.
+            resolution = state.get("request", {}).get("parameters", {}).get("resolutionKey")
+        else:
+            model_info = client.call("get_model_parameters", {"modelConfigId": int(model)})["model"]
+            resolution = model_info.get("outputSettings", {}).get("resolution", {}).get("defaultValue")
+        if kind == "IMAGE" and "resolutionKey" not in request["parameters"] and resolution is not None:
+            # Some deployments reject omission despite advertising a model default.
+            request["parameters"]["resolutionKey"] = resolution
         fingerprint = hashlib.sha256(json.dumps(request, sort_keys=True).encode()).hexdigest()
         if state:
             if state.get("fingerprint") != fingerprint or state.get("scope") != client.scope or state.get("output") != str(output):
@@ -398,7 +412,6 @@ def generate(*, kind, model, prompt, parameters, references, first_frame=None, l
         else:
             if output.exists():
                 raise MCPError("Refusing to overwrite output without a matching MCP journal")
-            model_info = client.call("get_model_parameters", {"modelConfigId": int(model)})["model"]
             validate(request, model_info, records)
             request["clientRequestId"] = "yoyo-"+uuid.uuid4().hex
             state = {"fingerprint": fingerprint, "scope": client.scope, "output": str(output), "request": request, "modelDefinition": model_info,

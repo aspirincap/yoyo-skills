@@ -71,7 +71,7 @@ python3 scripts/product_to_ugc.py \
 
 ## MCP configuration and video anchors
 
-Read [aicreative-mcp.md](aicreative-mcp.md). The image/video wrappers use numeric modelConfigId values and the configured MCP server. Adjacent frames map to `frame.firstFrame` and `frame.lastFrame`; they are not mixed with general references. The current orchestrator requests silent video and stores voiceover text for later assembly; it does not implement TTS.
+Read [aicreative-mcp.md](aicreative-mcp.md). The image/video wrappers use numeric modelConfigId values and the configured MCP server. Adjacent frames map to `frame.firstFrame` and `frame.lastFrame`; they are not mixed with general references. The UGC orchestrator defaults to Wan 2.7 (1108), which supports person references, both anchors and native audio ON. Use `--no-generate-audio` only with a compatible model. Person, frame, duration, ratio and audio compatibility are checked before any image generation. Voiceover text is retained for later assembly; the runner does not implement TTS.
 
 A real run requires `--plan-file` from the calling agent or explicit `--heuristic-plan`. Use the same project directory, plan, source files and model IDs to resume task journals. Use a new project for intentional regeneration.
 
