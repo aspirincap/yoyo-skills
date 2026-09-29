@@ -42,7 +42,7 @@
 
 复制 `.env.example` 为本 skill 目录的 `.env` 或设置环境变量（环境变量优先）：
 
-- `VIDEO_ANALYSIS_BASE_URL`：服务根地址，默认 `https://agentapi.spotmaxtech.com`。
+- `VIDEO_ANALYSIS_BASE_URL`：服务根地址，默认 `https://agentapi.spotmaxtech.com`。线上部署时配置实际内网地址（HTTP/HTTPS），不猜测或硬编码内部主机名。
 - `VIDEO_ANALYSIS_ENV`：默认 `production`，不发送 `X-API-Key`；本地测试显式改为 `local`。
 - `VIDEO_ANALYSIS_API_KEY`：仅本地测试使用，不写入仓库或命令示例。线上即使残留该变量也不会发送。
 
@@ -55,7 +55,7 @@
 - 默认只下载公开 TikTok 视频。
 - 只有用户明确同意时才使用其浏览器 Cookie；不得绕过私密、年龄或地域限制。
 - 只分析用户有权访问和使用的内容，遵守 TikTok 条款与当地法律；下载的视频仅用于获准的分析，不随交付物再分发。
-- 使用 HTTPS 和系统证书校验；仅本机 loopback 测试允许 HTTP。接口重定向被拒绝，测试 Key 不会跟随跳转。
+- 本地测试使用 HTTPS 和系统证书校验（loopback 测试例外）；线上支持配置内网 HTTP/HTTPS，始终不发送测试 Key。接口重定向被拒绝，测试 Key 不会跟随跳转。
 - 代理地址不会写入结果或日志。
 
 ## 快速开始
@@ -72,7 +72,7 @@ python3 scripts/analyze_video.py \
   --output _temp/tiktok-downloads/analysis-1.md
 ```
 
-已有媒体直链可改用 `--video-url https://your-media-host.example/video.mp4`（不与 `--video` 同传）。本地测试增加 `--environment local` 并通过环境或 `.env` 配置测试 Key。生产环境不发送该头，是否需要服务侧会话/网络上下文由实际部署决定。
+已有媒体直链可改用 `--video-url https://your-media-host.example/video.mp4`（不与 `--video` 同传）。本地测试增加 `--environment local` 并通过环境或 `.env` 配置测试 Key。线上由内网直接访问，不发送该头。外网地址无 Key 返回401是已观察到的访问边界，不代表内网调用也需要 Key；内网连通性需在部署环境验证。
 
 本地截取支持 `--start 2 --end 8`，或 `--start-offset 2s --end-offset 8s`；截取会保留音频，分析时间轴相对片段。旧 `--model`、`--resolution`、`--media-resolution`、`--fps` 和 Gemini 认证/inline 参数均不支持，不会静默忽略。
 

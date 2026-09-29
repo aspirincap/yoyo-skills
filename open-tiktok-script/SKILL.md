@@ -32,7 +32,7 @@ TikTok脚本优先追求 creator-native：
 - `uv`（Python包管理器）
 - `yt-dlp`（TikTok视频下载，需 `pip install yt-dlp` 或 `brew install yt-dlp`）
 - 视频分析通过 `POST https://agentapi.spotmaxtech.com/api/v1/describe_video`；运行器仅使用 Python 标准库。
-  - `VIDEO_ANALYSIS_BASE_URL` 可替换服务根地址。
+  - `VIDEO_ANALYSIS_BASE_URL` 可替换服务根地址；线上设置实际内网 HTTP/HTTPS 地址，按内网直连调用。
   - `VIDEO_ANALYSIS_ENV=production` 为默认值，线上不发送 `X-API-Key`。
   - 本地测试显式设置 `VIDEO_ANALYSIS_ENV=local`，从 `VIDEO_ANALYSIS_API_KEY` 读取测试 Key。
   - 配置读取优先级：shell 环境、`SKILL_DIR/.env`、默认值。不读取 AI 网关、Gemini 或 MCP 的认证配置。

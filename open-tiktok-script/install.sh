@@ -39,7 +39,7 @@ rsync -a --delete \
 echo "Installed to: $TARGET_DIR"
 echo ""
 echo "Before use:"
-echo "  1. Configure VIDEO_ANALYSIS_BASE_URL if using another deployment."
+echo "  1. Set VIDEO_ANALYSIS_BASE_URL to the intranet service root for production."
 echo "     For local tests, set VIDEO_ANALYSIS_ENV=local and VIDEO_ANALYSIS_API_KEY."
 echo "     Production mode does not send X-API-Key."
 echo "  2. Install yt-dlp if you need TikTok video downloads."

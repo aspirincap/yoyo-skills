@@ -68,8 +68,9 @@ class AnalysisTests(unittest.TestCase):
         self.assertNotIn('private-test-key',json.dumps(meta))
 
     def test_production_omits_all_credential_headers_even_with_leftover_key(self):
-        self.run_analysis('--environment','production')
+        self.run_analysis('--environment','production','--base-url','http://video-service.internal:8080')
         req=self.calls[0][0]
+        self.assertEqual(req.full_url,'http://video-service.internal:8080/api/v1/describe_video')
         for header in ('X-api-key','Authorization','X-goog-api-key'):self.assertNotIn(header,req.headers)
 
     def test_local_requires_key_but_does_not_inherit_old_gateway_key(self):

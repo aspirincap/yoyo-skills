@@ -88,11 +88,12 @@ def parse_args(argv=None):
     return args
 
 
-def endpoint(base_url):
+def endpoint(base_url, environment='local'):
     u = parse.urlsplit(base_url)
     local = u.scheme == 'http' and u.hostname in {'localhost', '127.0.0.1', '::1'}
-    if (u.scheme != 'https' and not local) or not u.hostname or u.username or u.password or u.query or u.fragment:
-        raise AnalysisError('Base URL must be HTTPS without credentials/query; HTTP is allowed only on loopback for tests')
+    intranet = u.scheme == 'http' and environment == 'production'
+    if (u.scheme != 'https' and not local and not intranet) or not u.hostname or u.username or u.password or u.query or u.fragment:
+        raise AnalysisError('Local tests require HTTPS (except loopback); production supports configured intranet HTTP/HTTPS. Embedded credentials/query are not allowed.')
     if u.path.rstrip('/') == ENDPOINT_PATH:
         return base_url.rstrip('/')
     return base_url.rstrip('/') + ENDPOINT_PATH
@@ -270,7 +271,7 @@ def main(argv=None):
     args = parse_args(argv)
     cfg = settings()
     secret = cfg.get('VIDEO_ANALYSIS_API_KEY', '').strip()
-    target = endpoint(args.base_url)
+    target = endpoint(args.base_url, args.environment)
     prompt = Path(args.prompt_file).expanduser().read_text(encoding='utf-8') if args.prompt_file else args.prompt
     if not prompt.strip():
         raise AnalysisError('A nonempty user_request is required')
