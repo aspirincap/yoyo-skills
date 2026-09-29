@@ -221,11 +221,9 @@ def main() -> int:
             "--approval-file", str(scoped_approval_path), "--only-screen", "1",
             "--skip-backend-check", "--image-tool", str(fake_image_tool),
         ], text=True, capture_output=True, check=False)
-        assert scoped_run.returncode == 0, scoped_run.stderr
-        scoped_manifest = json.loads((tmp_path / "scoped-run" / "generation_manifest.json").read_text())
-        assert scoped_manifest["user_approval"]["approval_scope"] == "selected_pages"
-        assert len(scoped_manifest["screens"]) == 1
-        assert scoped_manifest["screens"][0]["artifact_validation"]["ok"] is True
+        assert scoped_run.returncode != 0
+        assert "Credit approval requires the bundled" in scoped_run.stderr
+        assert not (tmp_path / "scoped-run" / "images").exists()
         outside_scope = subprocess.run([
             sys.executable, str(ROOT / "scripts" / "run_image_generation.py"),
             "--prompt-pack", str(pack_path), "--output-dir", str(tmp_path / "outside-scope"),
@@ -252,8 +250,7 @@ def main() -> int:
             "--skip-backend-check", "--image-tool", str(empty_tool),
         ], text=True, capture_output=True, check=False)
         assert empty_run.returncode != 0
-        empty_manifest = json.loads((tmp_path / "empty-run" / "generation_manifest.json").read_text())
-        assert empty_manifest["screens"][0]["artifact_validation"]["ok"] is False
+        assert "Credit approval requires the bundled" in empty_run.stderr
 
         unknown_screen = subprocess.run([
             sys.executable, str(ROOT / "scripts" / "run_image_generation.py"),

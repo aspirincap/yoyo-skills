@@ -12,7 +12,9 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -302,20 +304,20 @@ def validate(request, model, assets):
 
 
 @contextmanager
-def job_lock(path):
+def job_lock(path, blocking=False):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+b") as f:
         if os.name == "nt":
             import msvcrt
             f.write(b"0"); f.flush(); f.seek(0)
             try:
-                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+                msvcrt.locking(f.fileno(), msvcrt.LK_LOCK if blocking else msvcrt.LK_NBLCK, 1)
             except OSError:
                 raise MCPError("This generation output is already in use") from None
         else:
             import fcntl
             try:
-                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(f, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
             except BlockingIOError:
                 raise MCPError("This generation output is already in use") from None
         try:
@@ -325,6 +327,199 @@ def job_lock(path):
                 f.seek(0); msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
             else:
                 fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def value_hash(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def credit_job(request, references, first_frame, last_frame, output, journal):
+    def ref(value):
+        if not value or value.startswith(("https://", "http://", "asset:")):
+            return value
+        return str(Path(value).expanduser().resolve())
+    output = Path(output).resolve()
+    return {"request": json.loads(json.dumps(request)), "references": [ref(r) for r in references],
+            "firstFrame": ref(first_frame), "lastFrame": ref(last_frame), "output": str(output),
+            "journal": str(Path(journal).resolve() if journal else output.with_suffix(output.suffix+".mcp.json"))}
+
+
+def credit_sources(jobs):
+    outputs = {job["output"] for job in jobs}
+    sources = {}
+    for job in jobs:
+        for ref in [*job["references"], job["firstFrame"], job["lastFrame"]]:
+            if ref and ref not in outputs and not ref.startswith(("https://", "asset:")):
+                if not Path(ref).is_file():
+                    raise MCPError(f"Credit review reference does not exist: {ref}")
+                sources[ref] = digest(ref)
+    return sources
+
+
+def starting_points(model):
+    points = model.get("minPoints")
+    if isinstance(points, bool) or not isinstance(points, (int, float)) or not math.isfinite(points) or points < 0:
+        raise MCPError("Model minPoints is unavailable; cannot disclose estimated credits before submission")
+    return points
+
+
+def credit_pending(job, client):
+    path = Path(job["journal"])
+    if not path.exists():
+        return True
+    state = json.loads(path.read_text())
+    request = state.get("request", {})
+    same = (state.get("scope") == client.scope and state.get("output") == job["output"]
+            and all(request.get(k) == v for k, v in job["request"].items()))
+    if not same:
+        raise MCPError("Existing journal belongs to different inputs, credentials or output; use a new output/journal for new work")
+    authorization = state.get("creditAuthorization", {})
+    return not (state.get("taskId") or (authorization.get("jobHash") == value_hash(job)
+                and authorization.get("clientRequestId") == request.get("clientRequestId")))
+
+
+def credit_notice(review, path):
+    amount = review["plan"]["estimatedPoints"]
+    return (f"大约需要消耗 {amount:g} 积分。按模型起步积分 × 生成数量估算，实际扣费可能随参数变化。\n"
+            f"积分确认文件：{path}\nCredit approval required: 请向用户展示本批次内容和上述预估，取得明确同意后记录确认，再重跑原命令。")
+
+
+def approved_review(review):
+    fingerprint = value_hash(review["plan"])
+    return (review.get("reviewHash") == fingerprint
+            and review.get("approval", {}).get("reviewHash") == fingerprint
+            and bool(review.get("approval", {}).get("confirmation")))
+
+
+def prepare_credit_review(jobs, path, client):
+    """Read-only pricing, then stop until a human's informed approval is recorded."""
+    path = Path(path).resolve()
+    models = {}
+    for job in jobs:
+        request = job["request"]
+        mid = request["modelConfigId"]
+        if mid not in models:
+            models[mid] = client.call("get_model_parameters", {"modelConfigId": mid})["model"]
+        model = models[mid]
+        params = request["parameters"]
+        if request["generationType"] == "IMAGE" and "resolutionKey" not in params:
+            previous = Path(job["journal"])
+            state = json.loads(previous.read_text()) if previous.exists() else {}
+            resolution = state.get("request", {}).get("parameters", {}).get("resolutionKey")
+            resolution = resolution or model.get("outputSettings", {}).get("resolution", {}).get("defaultValue")
+            if resolution is not None:
+                params["resolutionKey"] = resolution
+        # Validate planned requests even when generated reference files do not yet exist.
+        check = json.loads(json.dumps(request))
+        if job["references"]:
+            check["imageAssets"] = [{"assetId": 1}] * len(job["references"])
+        if job["firstFrame"]:
+            check["frame"] = {"firstFrame": {"assetId": 1}}
+            if job["lastFrame"]:
+                check["frame"]["lastFrame"] = {"assetId": 2}
+        validate(check, model, [])
+    pending = [job for job in jobs if credit_pending(job, client)]
+    if not pending:
+        return
+    if len({value_hash(j) for j in jobs}) != len(jobs) or len({j["journal"] for j in jobs}) != len(jobs):
+        raise MCPError("Credit plan contains duplicate jobs or journals")
+    body = {"scope": client.scope, "endpoint": client.url, "jobs": jobs, "sources": credit_sources(jobs),
+            "models": {str(mid): {"name": m.get("displayName", str(mid)), "minPoints": starting_points(m)}
+                       for mid, m in models.items()}}
+    with job_lock(Path(str(path)+".lock"), blocking=True):
+        previous = json.loads(path.read_text()) if path.exists() else {}
+        if (previous.get("reviewHash") == value_hash(previous.get("plan"))
+                and all(previous.get("plan", {}).get(k) == v for k, v in body.items())):
+            review = previous
+        else:
+            body["estimatedPoints"] = sum(starting_points(models[j["request"]["modelConfigId"]])
+                                          * j["request"]["parameters"].get("count", 1) for j in pending)
+            body["newJobHashes"] = [value_hash(j) for j in pending]
+            review = {"plan": body, "reviewHash": value_hash(body), "createdAt": time.time(),
+                      "claims": previous.get("claims", {})}
+            atomic_json(path, review)
+        lines = [credit_notice(review, path), "", "本批次任务："]
+        for j in jobs:
+            r = j["request"]
+            lines.append(f"- {models[r['modelConfigId']].get('displayName', r['modelConfigId'])}: "
+                         f"{json.dumps(r['parameters'], ensure_ascii=False)} → {j['output']}")
+        path.with_suffix(path.suffix+".md").write_text("\n".join(lines)+"\n")
+        if not approved_review(review):
+            raise MCPError(credit_notice(review, path))
+
+
+def approve_credits(path, confirmation):
+    # This is a local record of the user's reply, never permission to self-approve.
+    reply = confirmation.strip().lower()
+    if (not reply or any(word in reply for word in
+            ("不同意", "不确认", "不可以", "不允许", "未同意", "拒绝", "取消", "不要", "暂不", "先别", "暂缓"))
+            or re.search(r"\b(no|not|never|reject|cancel|decline|stop|don't)\b", reply)):
+        raise MCPError("An affirmative user confirmation is required")
+    if (not any(word in reply for word in ("同意", "确认", "允许", "批准", "可以", "继续", "开始", "执行"))
+            and not re.search(r"\b(yes|approve|approved|agree|agreed|ok|okay|proceed)\b", reply)
+            and reply.rstrip("。！!") not in {"好", "好的", "行", "是"}):
+        raise MCPError("An affirmative user confirmation is required")
+    path = Path(path).resolve()
+    with job_lock(Path(str(path)+".lock"), blocking=True):
+        review = json.loads(path.read_text())
+        if review.get("reviewHash") != value_hash(review["plan"]):
+            raise MCPError("Credit review changed; regenerate it before seeking approval")
+        review["approval"] = {"reviewHash": review["reviewHash"], "confirmation": confirmation, "approvedAt": time.time()}
+        atomic_json(path, review)
+
+
+def require_credit_job(job, path, client, client_request_id):
+    """Claim exactly one approved request ID; retries can reuse that same ID."""
+    path = Path(path).resolve()
+    mid = job["request"]["modelConfigId"]
+    points = starting_points(client.call("get_model_parameters", {"modelConfigId": mid})["model"])
+    with job_lock(Path(str(path)+".lock"), blocking=True):
+        if not path.exists():
+            raise MCPError(f"Credit approval required: missing review {path}; run the planning command first")
+        review = json.loads(path.read_text())
+        plan = review["plan"]
+        if not approved_review(review):
+            raise MCPError(credit_notice(review, path))
+        if plan["scope"] != client.scope or job not in plan["jobs"]:
+            raise MCPError("Credit approval does not cover these inputs, parameters, output or account; prepare a new review")
+        if points != plan["models"][str(mid)]["minPoints"]:
+            raise MCPError("Model starting credits changed; rerun planning and obtain fresh credit approval")
+        if credit_sources(plan["jobs"]) != plan["sources"]:
+            raise MCPError("Reference content changed; rerun planning and obtain fresh credit approval")
+        dependencies = {j["output"]: j for j in plan["jobs"]}
+        for ref in [*job["references"], job["firstFrame"], job["lastFrame"]]:
+            if ref in dependencies:
+                producer = json.loads(Path(dependencies[ref]["journal"]).read_text())
+                if not any(d.get("path") == ref and d.get("sha256") == digest(ref)
+                           for d in producer.get("downloads", [])):
+                    raise MCPError("Generated reference changed; restore the approved dependency or prepare a new plan")
+        key = value_hash(job)
+        if key not in plan["newJobHashes"]:
+            raise MCPError("This job was excluded from the estimate as existing work; obtain fresh credit approval")
+        claimed = review.setdefault("claims", {}).get(key)
+        if claimed and claimed != client_request_id:
+            raise MCPError("Credit approval already used by another request; keep the original journal or obtain approval for new output")
+        review["claims"][key] = client_request_id
+        atomic_json(path, review)
+        return {"jobHash": key, "reviewHash": review["reviewHash"], "clientRequestId": client_request_id}
+
+
+def prepare_credit_commands(commands, review_path, url=None):
+    """Build a batch from the same CLI parsers used at execution, without submitting."""
+    jobs = []
+    for cmd in commands:
+        preview = subprocess.run([*cmd, "--dry-run"], text=True, capture_output=True)
+        if preview.returncode:
+            raise MCPError("Credit planning failed: "+preview.stderr)
+        try:
+            data = json.loads(preview.stdout)
+            jobs.append(data["creditJob"])
+        except (ValueError, KeyError):
+            raise MCPError("Image/video tool must support the MCP credit planning protocol") from None
+    if jobs:
+        prepare_credit_review(jobs, review_path, Client(url))
+        for cmd in commands:
+            cmd.extend(["--credit-review", str(Path(review_path).resolve())])
 
 
 def download_result(asset, destination, generation_type, timeout):
@@ -359,7 +554,7 @@ def download_result(asset, destination, generation_type, timeout):
 
 def generate(*, kind, model, prompt, parameters, references, first_frame=None, last_frame=None,
              output, journal=None, url=None, timeout=60, poll_interval=5, max_polls=120,
-             dry_run=False, client=None):
+             dry_run=False, client=None, credit_review=None):
     if not prompt.strip() or poll_interval < 0 or max_polls < 1:
         raise MCPError("Nonempty prompt and valid polling limits are required")
     if last_frame and not first_frame:
@@ -367,9 +562,10 @@ def generate(*, kind, model, prompt, parameters, references, first_frame=None, l
     if first_frame and references:
         raise MCPError("Use frame anchors or reference images, not both")
     request = {"generationType": kind, "modelConfigId": int(model), "prompt": prompt, "parameters": dict(parameters)}
+    planned_job = credit_job(request, references, first_frame, last_frame, output, journal)
     if dry_run:
         print(json.dumps({"provider": "aicreative-mcp", "tool": "submit_generation_task", "argumentsBeforeAssetResolution": request,
-                          "referenceInputs": references, "firstFrameInput": first_frame, "lastFrameInput": last_frame,
+                          "referenceInputs": references, "firstFrameInput": first_frame, "lastFrameInput": last_frame, "creditJob": planned_job,
                           "note": "Offline only: resolve assets and validate live model configuration before submission"}, ensure_ascii=False, indent=2))
         return []
     if kind == "IMAGE":
@@ -415,9 +611,21 @@ def generate(*, kind, model, prompt, parameters, references, first_frame=None, l
             validate(request, model_info, records)
             request["clientRequestId"] = "yoyo-"+uuid.uuid4().hex
             state = {"fingerprint": fingerprint, "scope": client.scope, "output": str(output), "request": request, "modelDefinition": model_info,
-                     "startedAt": time.time(), "observations": [], "downloads": []}
+                     "preparedAt": time.time(), "startedAt": time.time(), "observations": [], "downloads": []}
             atomic_json(journal, state)
         if not state.get("taskId"):
+            planned_job["request"]["parameters"] = dict(state["request"]["parameters"])
+            authorization = state.get("creditAuthorization", {})
+            if not (authorization.get("jobHash") == value_hash(planned_job)
+                    and authorization.get("clientRequestId") == state["request"]["clientRequestId"]):
+                review_path = credit_review or str(journal)+".credits.json"
+                if not credit_review:
+                    prepare_credit_review([planned_job], review_path, client)
+                state["creditAuthorization"] = require_credit_job(planned_job, review_path, client, state["request"]["clientRequestId"])
+                # Generation timing excludes time spent waiting for user approval.
+                state["startedAt"] = time.time()
+                # Persist before the call, so a lost response reuses its approved ID.
+                atomic_json(journal, state)
             response = client.call("submit_generation_task", state["request"])
             state["taskId"] = response["task"]["taskId"]
             atomic_json(journal, state)
@@ -466,7 +674,14 @@ def main():
     group = bind.add_mutually_exclusive_group(required=True)
     group.add_argument("--asset-id", type=int)
     group.add_argument("--source-url")
+    approval = sub.add_parser("approve-credits", help="Record a user's explicit reply AFTER disclosing the estimate")
+    approval.add_argument("--review", required=True)
+    approval.add_argument("--confirmation", required=True)
     args = parser.parse_args()
+    if args.command == "approve-credits":
+        approve_credits(args.review, args.confirmation)
+        print("Credit confirmation recorded. Rerun the original generation command.")
+        return
     client = Client()
     if args.command == "check":
         client.initialize()

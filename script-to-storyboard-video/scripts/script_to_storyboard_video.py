@@ -29,7 +29,7 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from aicreative_mcp import model_default
+from aicreative_mcp import MCPError, model_default, prepare_credit_commands
 
 IMAGE_TOOL = SCRIPT_DIR / "image_tool.py"
 VIDEO_TOOL = SCRIPT_DIR / "generate_video.py"
@@ -204,6 +204,7 @@ def command_storyboard(args: argparse.Namespace) -> int:
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
 
+    jobs = []
     for index, segment in enumerate(segments):
         start, end = segment
         prompt = storyboard_prompt(
@@ -241,7 +242,7 @@ def command_storyboard(args: argparse.Namespace) -> int:
             cmd.extend(["--image", image])
         if args.dry_run:
             cmd.append("--dry-run")
-        run_command(cmd, dry_run=False)
+        jobs.append(cmd)
 
         manifest["segments"].append({
             "index": index + 1,
@@ -253,6 +254,10 @@ def command_storyboard(args: argparse.Namespace) -> int:
         })
 
     write_json(project_dir / "project.json", manifest)
+    if not args.dry_run:
+        prepare_credit_commands(jobs, project_dir / "storyboard.credits.json")
+    for cmd in jobs:
+        run_command(cmd, dry_run=False)
     print(f"project_dir={project_dir}")
     print("Next: review the storyboard image(s). After approval, run the video stage with --confirmed.")
     return 0
@@ -320,6 +325,8 @@ def command_video(args: argparse.Namespace) -> int:
         raise SystemExit("No storyboard segments found in project.json.")
 
     jobs = [build_video_job(args, project_dir, project, segment) for segment in segments]
+    if not args.dry_run:
+        prepare_credit_commands(jobs, project_dir / "video.credits.json")
     if args.parallel <= 1 or len(jobs) <= 1:
         for cmd in jobs:
             run_command(cmd, dry_run=False)
@@ -388,4 +395,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except MCPError as exc:
+        raise SystemExit(str(exc)) from None

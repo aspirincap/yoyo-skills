@@ -13,6 +13,18 @@ This skill turns an advertising script plus product image(s) into a staged produ
 
 It is intentionally narrower than `product-to-ugc-video`: it does not build a creator persona, character sheet, or adjacent-frame UGC plan. It is for ad storyboard production and direct compatible video execution.
 
+## 积分确认门禁（必须执行）
+
+正式提交任何新的 AI Creative 生成任务前，先准备提示词、素材和参数，运行下方的正常生成命令。未确认时运行器只读取模型配置、写出 `*.credits.json` 和配套 `.md`，随后以 `Credit approval required` 停止，不会提交生成任务。
+
+故事板阶段与视频阶段分别汇总并确认；`--confirmed` 仅表示故事板内容获批，不能替代视频积分确认。
+
+向用户说明本批次内容、模型和数量，并告知：**“大约需要消耗 xx 积分”**。xx 使用当前模型 `minPoints × 生成数量` 累加；补充“按模型起步积分估算，实际扣费可能随参数变化”。不得称为准确报价或扣费上限。读取不到起步积分时停止，不猜测免费或沿用硬编码价格。
+
+等待用户明确同意本次已告知的预估后，才可用 `scripts/aicreative_mcp.py approve-credits --review <本次确认文件> --confirmation '<用户实际回复>'` 记录同意，并重跑原命令。不能自行确认，也不能把历史的“不限积分”、生成请求或内容审阅当作对本次积分的确认。用户拒绝或未回复时不提交。
+
+任务数量、模型、提示词、素材、参数（含时长、分辨率、声音、公开开关）或账户变化，需要重新告知并确认。已获批任务的同一 `clientRequestId` 重试，以及查询、下载已有任务无需重复确认；新增任务和失败后的重新生成仍需确认。禁止通过直接调用 MCP `submit_generation_task`、改用其他脚本或自行写入确认文件绕过门禁。纯规划和 `--dry-run` 不收费、不需要确认。详细操作见 [MCP 积分门禁](references/aicreative-mcp.md#credit-approval-gate)。
+
 ## Bundled Scripts
 
 The skill includes self-contained provider wrappers:
@@ -142,7 +154,7 @@ The approval gate is important because video generation spends more quota and is
 Use this policy:
 
 - If the user asks to generate a storyboard, stop after storyboards and ask for confirmation.
-- If the user says "OK", "确认", "故事版可以", "继续生成视频", or equivalent, run the video stage.
+- If the user says "OK", "确认", "故事版可以", "继续生成视频", or equivalent, prepare the video stage credit estimate, obtain credit approval, then run the video stage.
 - If the user asks to revise the storyboard, rerun only the storyboard stage or manually adjust prompts first.
 - If the user asks to skip confirmation and generate everything in one go, state that this skill is designed as a two-stage workflow, then proceed only if the instruction is explicit and recent.
 

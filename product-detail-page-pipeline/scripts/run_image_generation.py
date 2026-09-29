@@ -16,7 +16,7 @@ import sys
 import time
 from typing import Any
 
-from aicreative_mcp import model_default
+from aicreative_mcp import MCPError, model_default, prepare_credit_commands
 
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
@@ -572,6 +572,8 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     preflight: dict[str, Any]
+    if not args.dry_run and args.image_tool.resolve() != DEFAULT_IMAGE_TOOL.resolve():
+        raise SystemExit("Credit approval requires the bundled image_tool.py; custom tools are allowed only with --dry-run")
     if args.dry_run or args.image_tool_dry_run or args.skip_backend_check:
         preflight = {"ok": True, "skipped": True, "reason": "dry run or explicit skip"}
     else:
@@ -640,7 +642,7 @@ def main(argv: list[str] | None = None) -> int:
         "screens": [],
     }
 
-    failures = 0
+    planned = []
     for index, screen in enumerate(screens):
         sid = screen_id(screen, index)
         if only and sid not in only:
@@ -662,6 +664,12 @@ def main(argv: list[str] | None = None) -> int:
         manifest["deliverables"]["original_screens"].append(str(output_path.resolve()))
         response_path = response_dir / f"screen_{sid}.json"
         cmd = build_command(args, mode, prompt_path, output_path, response_path, refs, aspect_ratio)
+        planned.append((screen, sid, mode, aspect_ratio, prompt_path, output_path, response_path, refs, missing_refs, cmd))
+
+    if not (args.dry_run or args.image_tool_dry_run):
+        prepare_credit_commands([row[-1] for row in planned], args.output_dir / "generation.credits.json", args.base_url)
+    failures = 0
+    for screen, sid, mode, aspect_ratio, prompt_path, output_path, response_path, refs, missing_refs, cmd in planned:
         result = run_command(cmd, args.dry_run)
         write_text(log_dir / f"screen_{sid}.command.txt", shell_join(cmd) + "\n")
         write_text(log_dir / f"screen_{sid}.stdout.txt", result["stdout"])
@@ -705,4 +713,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except MCPError as exc:
+        raise SystemExit(str(exc)) from None

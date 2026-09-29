@@ -32,6 +32,7 @@ def main(argv=None):
         p.add_argument('--visibility', choices=['ON', 'OFF'], default='OFF')
         p.add_argument('--output', required=True)
         p.add_argument('--save-json')
+        p.add_argument('--credit-review', help='Approved batch credit review; default creates a per-task review')
         p.add_argument('--timeout', type=float, default=120)
         p.add_argument('--poll-interval', type=float, default=5)
         p.add_argument('--max-polls', type=int, default=120)
@@ -53,7 +54,7 @@ def main(argv=None):
     for path in generate(kind='IMAGE', model=args.model, prompt=prompt, parameters=parameters,
                          references=getattr(args, 'image', []), output=args.output, journal=args.save_json,
                          url=args.mcp_url, timeout=args.timeout, poll_interval=args.poll_interval,
-                         max_polls=args.max_polls, dry_run=args.dry_run):
+                         max_polls=args.max_polls, dry_run=args.dry_run, credit_review=args.credit_review):
         print(f'saved={path}')
     return 0
 

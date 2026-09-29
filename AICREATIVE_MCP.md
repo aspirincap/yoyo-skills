@@ -28,6 +28,34 @@ python3 scripts/aicreative_mcp.py models --type VIDEO
 
 The defaults reflect the tested Beta account; use model IDs available to your account. The runtime reads `get_model_parameters` before new submissions and checks prompt length, image count/known dimensions/pixel count, frame requirements, duration and parameter enums. Omitted image resolution is filled from the model's declared default and persisted in the task journal, because the tested server rejects an omitted `resolutionKey`.
 
+## Credit approval gate
+
+Before each new paid batch, disclose **“大约需要消耗 xx 积分”** and wait for the user's explicit agreement to that estimate. Compute `xx = sum(current model minPoints × requested output count)` across the new jobs. This is an approximation based on starting credits, not an exact quote or a spending cap; resolution, duration and audio may affect the actual charge. Do not invent per-second pricing. Missing or invalid `minPoints` blocks submission. Historical unlimited-spend permission and creative/content approval do not replace this confirmation.
+
+Prepare prompts, inputs and parameters, then run the normal generation command. Without credit approval it writes a review JSON plus a readable `.md`, prints the estimate, exits nonzero with `Credit approval required`, and submits **zero** generation tasks. Read-only model checks and reference binding can happen beforehand. `--dry-run` remains offline and does not fetch prices or require approval.
+
+| Flow | Approval scope | Default review file |
+| --- | --- | --- |
+| Direct image/video CLI, including standard product image | One request, including `--count` outputs | `<journal>.credits.json` |
+| Detail page | All selected pages | `<output-dir>/generation.credits.json` |
+| Storyboard | All storyboard sheets | `<project-dir>/storyboard.credits.json` |
+| Storyboard video | All video segments, separately from storyboards | `<project-dir>/video.credits.json` |
+| UGC | Character reference, keyframes and video segments together | `<project-dir>/generation.credits.json` |
+
+Show the batch contents, models, counts and estimate to the user. **Only after their actual affirmative reply**, record it locally:
+
+```bash
+python3 scripts/aicreative_mcp.py approve-credits \
+  --review /absolute/path/generation.credits.json \
+  --confirmation '<actual affirmative user reply after seeing the estimate>'
+```
+
+Then rerun the original command with the same project/output/journal. Batch wrappers pass `--credit-review` to their child tools automatically. There is no automatic approval or `--yes` generation flag. Do not call `approve-credits` proactively, fabricate the user's reply, or bypass this flow with a raw `submit_generation_task` call. The receipt records human approval; it is a local workflow guard, not a server-side billing limit or a cryptographic proof of human identity.
+
+Approval covers the disclosed plan, account, current starting prices and source-file content. Changes require a fresh review and user agreement. A shared receipt claims one persisted `clientRequestId` per approved job, including concurrent segments. Lost-response retries reuse that ID. Existing accepted tasks can be queried/downloaded without another approval; new attempts after failure use new outputs/journals and require new approval. Preserve journals and receipts for recovery.
+
+The detail-page creative approval and storyboard `--confirmed` checks remain separate. `--skip-backend-check` cannot skip the credit gate. Detail-page custom `--image-tool` paths are allowed only with the non-executing `--dry-run`, because a custom tool may ignore preview/approval flags.
+
 ## Local references: bind once, reuse by content
 
 MCP `upload_media` imports an accessible HTTPS URL. It does **not** upload local bytes, accept base64 or expose a local upload endpoint. Do not invent an endpoint or silently publish local files to an unrelated hosting service.

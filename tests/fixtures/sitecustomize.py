@@ -21,7 +21,9 @@ if os.getenv('YOYO_FAKE_MCP_STATE'):
 
     def spec(kind,model_id=None):
         enum=lambda values:{'visibility':True,'values':[{'value':v} for v in values]}
-        return {'modelType':kind.lower(),'inputSettings':{
+        return {'modelType':kind.lower(),'displayName':f'Fake {model_id}',
+            'minPoints':float(os.getenv('YOYO_FAKE_MIN_POINTS', '5' if kind=='IMAGE' else ('25' if model_id==1108 else '40'))),
+            'inputSettings':{
             'supportRealPerson':not bool(os.getenv('YOYO_FAKE_NO_PERSON')),
             'text':{'minCount':1,'maxCount':5000},
             'image':{'visibility':True,'maxCount':14,'minWidth':300,'minHeight':300},
@@ -68,7 +70,7 @@ if os.getenv('YOYO_FAKE_MCP_STATE'):
                         state['tasks'][cid]={'taskId':'GT_'+str(len(state['tasks'])+1),'request':args,'polls':0}
                     task=state['tasks'][cid]
                     value={'task':{'taskId':task['taskId'],'status':'PROCESSING','items':[]}}
-                    if os.getenv('YOYO_FAKE_LOST_SUBMIT') and not state.get('lost'):
+                    if os.getenv('YOYO_FAKE_LOST_SUBMIT_ALWAYS') or (os.getenv('YOYO_FAKE_LOST_SUBMIT') and not state.get('lost')):
                         state['lost']=True;save()
                         raise urllib.error.URLError('simulated response lost after acceptance')
                 elif name=='get_generation_task':

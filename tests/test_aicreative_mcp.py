@@ -1,5 +1,6 @@
 from __future__ import annotations
 import copy
+import concurrent.futures
 import importlib.util
 import io
 import json
@@ -69,6 +70,41 @@ class Validation(unittest.TestCase):
                 with self.assertRaises(mcp.MCPError):
                     with mcp.job_lock(path):pass
 
+    def test_credit_receipt_concurrent_claims_and_live_revalidation(self):
+        class Client:
+            scope='test-account';url='https://mcp.test/api/mcp';points=5
+            def call(self,*args):return {'model':{**model(),'minPoints':self.points}}
+        client=Client()
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);review=root/'credits.json';source=root/'source.png'
+            Image.new('RGB',(384,384),'blue').save(source)
+            request={'generationType':'IMAGE','modelConfigId':2102,'prompt':'Product image',
+                     'parameters':{'count':1,'aspectRatioKey':'1:1','publicVisibilityKey':'OFF'}}
+            jobs=[mcp.credit_job(request,[str(source)],None,None,root/f'{i}.png',None) for i in range(2)]
+            with self.assertRaisesRegex(mcp.MCPError,'大约需要消耗 10 积分'):
+                mcp.prepare_credit_review(jobs,review,client)
+            mcp.approve_credits(review,'Yes, proceed now')
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                claims=list(pool.map(lambda i:mcp.require_credit_job(jobs[i],review,client,f'id-{i}'),range(2)))
+            self.assertEqual(len(claims),2)
+            self.assertEqual(len(json.loads(review.read_text())['claims']),2)
+            mcp.require_credit_job(jobs[0],review,client,'id-0')
+            with self.assertRaisesRegex(mcp.MCPError,'already used'):
+                mcp.require_credit_job(jobs[0],review,client,'new-id')
+            for key,value in [('count',2),('publicVisibilityKey','ON')]:
+                changed=copy.deepcopy(jobs[0]);changed['request']['parameters'][key]=value
+                with self.assertRaisesRegex(mcp.MCPError,'does not cover'):
+                    mcp.require_credit_job(changed,review,client,'id-0')
+            client.points=8
+            with self.assertRaisesRegex(mcp.MCPError,'starting credits changed'):
+                mcp.require_credit_job(jobs[0],review,client,'id-0')
+            client.points=5;client.scope='other-account'
+            with self.assertRaisesRegex(mcp.MCPError,'does not cover'):
+                mcp.require_credit_job(jobs[0],review,client,'id-0')
+            client.scope='test-account';Image.new('RGB',(384,384),'red').save(source)
+            with self.assertRaisesRegex(mcp.MCPError,'Reference content changed'):
+                mcp.require_credit_job(jobs[0],review,client,'id-0')
+
     def test_json_rpc_sse_id_and_secret_redaction(self):
         with patch('aicreative_mcp.load_config',return_value=('https://mcp.test',{'authorization':'Bearer private-token'})):
             client=mcp.Client()
@@ -97,8 +133,15 @@ class Workflows(unittest.TestCase):
 
     def tearDown(self):self.temp.cleanup()
 
-    def run_cli(self,script,*args,ok=True):
-        result=subprocess.run([sys.executable,str(ROOT/script),*map(str,args)],env=self.env,text=True,capture_output=True)
+    def run_cli(self,script,*args,ok=True,approve=True):
+        command=[sys.executable,str(ROOT/script),*map(str,args)]
+        result=subprocess.run(command,env=self.env,text=True,capture_output=True)
+        # Simulated human approval only in the isolated fake-service test harness.
+        # The production CLI has no auto-approve switch or environment bypass.
+        if approve and 'Credit approval required:' in result.stdout+result.stderr:
+            for path in self.root.rglob('*.credits.json'):
+                mcp.approve_credits(path, '同意上述预估积分（离线测试模拟用户）')
+            result=subprocess.run(command,env=self.env,text=True,capture_output=True)
         if ok:self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         else:self.assertNotEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertNotIn('test-private-token',result.stdout+result.stderr)
@@ -109,14 +152,147 @@ class Workflows(unittest.TestCase):
     def bind(self):
         self.run_cli('standard-product-image/scripts/aicreative_mcp.py','bind','--file',self.product,'--asset-id','42')
 
-    def image(self,*extra,ok=True):
+    def image(self,*extra,ok=True,approve=True):
         return self.run_cli('standard-product-image/scripts/image_tool.py','edit','--prompt','Preserve the product','--image',self.product,
-            '--output',self.root/'out.png','--save-json',self.root/'job.json','--poll-interval','0',*extra,ok=ok)
+            '--output',self.root/'out.png','--save-json',self.root/'job.json','--poll-interval','0',*extra,ok=ok,approve=approve)
 
     def test_offline_preview_does_not_connect_or_require_binding(self):
         self.image('--dry-run')
         self.assertFalse(self.state.exists())
         self.assertFalse((self.root/'job.json').exists())
+
+    def test_credit_gate_blocks_until_disclosed_estimate_is_approved(self):
+        self.bind()
+        result=self.image('--count','3',ok=False,approve=False)
+        self.assertIn('大约需要消耗 15 积分',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),0)
+        review=self.root/'job.json.credits.json'
+        self.assertNotIn('approval',json.loads(review.read_text()))
+        for reply in ['', '不同意', '不确认', '不可以', '不要继续', 'not approved', 'do not proceed']:
+            with self.assertRaises(mcp.MCPError):mcp.approve_credits(review,reply)
+        self.image('--count','3',ok=False,approve=False)
+        self.assertEqual(len(self.server()['tasks']),0)
+        self.run_cli('standard-product-image/scripts/aicreative_mcp.py','approve-credits',
+                     '--review',review,'--confirmation','同意这次大约15积分',approve=False)
+        journal=self.root/'job.json';state=json.loads(journal.read_text());state['startedAt']=1
+        journal.write_text(json.dumps(state))
+        self.image('--count','3',approve=False)
+        self.assertLess(json.loads(journal.read_text())['observedSeconds'],30)
+        self.assertEqual(len(self.server()['tasks']),1)
+        self.assertEqual(len(json.loads(review.read_text())['claims']),1)
+
+    def test_credit_gate_requotes_when_starting_price_changes(self):
+        self.bind();self.image(ok=False,approve=False)
+        review=self.root/'job.json.credits.json';mcp.approve_credits(review,'同意5积分')
+        self.env['YOYO_FAKE_MIN_POINTS']='8'
+        result=self.image(ok=False,approve=False)
+        self.assertIn('大约需要消耗 8 积分',result.stderr)
+        self.assertNotIn('approval',json.loads(review.read_text()))
+        self.assertEqual(len(self.server()['tasks']),0)
+
+    def test_credit_gate_rejects_unknown_price_and_tampered_review(self):
+        self.bind();self.env['YOYO_FAKE_MIN_POINTS']='nan'
+        result=self.image(ok=False,approve=False)
+        self.assertIn('minPoints is unavailable',result.stderr)
+        self.env.pop('YOYO_FAKE_MIN_POINTS')
+        self.image(ok=False,approve=False)
+        review=self.root/'job.json.credits.json';mcp.approve_credits(review,'同意5积分')
+        data=json.loads(review.read_text());data['plan']['estimatedPoints']=0
+        review.write_text(json.dumps(data))
+        result=self.image(ok=False,approve=False)
+        self.assertIn('大约需要消耗 5 积分',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),0)
+
+    def test_credit_gate_cannot_reuse_approval_with_new_request_id(self):
+        self.bind();self.image()
+        (self.root/'out.png').unlink();(self.root/'job.json').unlink()
+        result=self.image(ok=False,approve=False)
+        self.assertIn('already used by another request',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),1)
+
+    def test_credit_gate_existing_task_can_resume_without_review(self):
+        self.bind();self.env['YOYO_FAKE_PENDING']='1'
+        self.image('--max-polls','1',ok=False)
+        (self.root/'job.json.credits.json').unlink()
+        self.image('--max-polls','1',approve=False)
+        self.assertEqual(len(self.server()['tasks']),1)
+
+    def test_credit_gate_lost_response_across_processes_reuses_approved_id(self):
+        self.bind();self.env['YOYO_FAKE_LOST_SUBMIT_ALWAYS']='1'
+        self.image(ok=False)
+        saved=json.loads((self.root/'job.json').read_text())
+        self.assertNotIn('taskId',saved)
+        self.assertIn('creditAuthorization',saved)
+        (self.root/'job.json.credits.json').unlink()
+        self.env.pop('YOYO_FAKE_LOST_SUBMIT_ALWAYS')
+        self.image(approve=False)
+        submits=[c for c in self.server()['calls'] if c['name']=='submit_generation_task']
+        self.assertEqual(len(submits),4)
+        self.assertEqual(len({c['arguments']['clientRequestId'] for c in submits}),1)
+        self.assertEqual(len(self.server()['tasks']),1)
+
+    def test_credit_gate_new_output_is_not_covered_by_prior_approval(self):
+        self.bind();self.image()
+        result=self.image('--output',self.root/'different.png','--save-json',self.root/'different.json',
+                          '--credit-review',self.root/'job.json.credits.json',ok=False,approve=False)
+        self.assertIn('does not cover',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),1)
+
+    def test_credit_gate_storyboard_and_video_are_separate_batches(self):
+        self.bind();project=self.root/'story';script='script-to-storyboard-video/scripts/script_to_storyboard_video.py'
+        command=['storyboard','--script','Hook, demo, CTA','--product-image',self.product,'--duration','16','--project-dir',project]
+        result=self.run_cli(script,*command,ok=False,approve=False)
+        self.assertIn('大约需要消耗 10 积分',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),0)
+        mcp.approve_credits(project/'storyboard.credits.json','同意10积分')
+        self.run_cli(script,*command,approve=False)
+        video=['video','--project-dir',project,'--confirmed','--parallel','1']
+        result=self.run_cli(script,*video,ok=False,approve=False)
+        self.assertIn('大约需要消耗 80 积分',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),2)
+        mcp.approve_credits(project/'video.credits.json','同意80积分')
+        self.run_cli(script,*video,approve=False)
+        self.assertEqual(len(self.server()['tasks']),4)
+
+    def test_credit_gate_ugc_quotes_entire_chain_before_character_generation(self):
+        self.bind();project=self.root/'ugc';script='product-to-ugc-video/scripts/product_to_ugc.py'
+        command=['--product-image',self.product,'--description','A mug','--segment-count','2','--segment-duration','4',
+                 '--heuristic-plan','--skip-merge','--project-dir',project,'--poll-interval','0']
+        result=self.run_cli(script,*command,ok=False,approve=False)
+        self.assertIn('大约需要消耗 70 积分',result.stderr)
+        self.assertEqual(len(self.server()['tasks']),0)
+        review=project/'generation.credits.json'
+        self.assertEqual(len(json.loads(review.read_text())['plan']['jobs']),6)
+        mcp.approve_credits(review,'同意本方案大约70积分')
+        self.run_cli(script,*command,approve=False)
+        self.assertEqual(len(self.server()['tasks']),6)
+        self.run_cli(script,*command,approve=False)
+        self.assertEqual(len(self.server()['tasks']),6)
+
+    def test_credit_gate_batch_changes_invalidate_approval(self):
+        self.bind();project=self.root/'story';script='script-to-storyboard-video/scripts/script_to_storyboard_video.py'
+        command=['storyboard','--script','Hook','--product-image',self.product,'--duration','16','--project-dir',project]
+        self.run_cli(script,*command,ok=False,approve=False)
+        review=project/'storyboard.credits.json';original=json.loads(review.read_text())['reviewHash']
+        changes=[['--script','New hook'], ['--image-model','2103'], ['--storyboard-size','1024x1024'], ['--duration','24']]
+        for extra in changes:
+            self.run_cli(script,*command,ok=False,approve=False)
+            mcp.approve_credits(review,'同意10积分')
+            self.run_cli(script,*command,*extra,ok=False,approve=False)
+            updated=json.loads(review.read_text())
+            self.assertNotEqual(original,updated['reviewHash'])
+            self.assertNotIn('approval',updated)
+        self.assertEqual(len(self.server()['tasks']),0)
+
+    def test_credit_gate_source_content_change_invalidates_approval(self):
+        self.bind();project=self.root/'story';script='script-to-storyboard-video/scripts/script_to_storyboard_video.py'
+        command=['storyboard','--script','Hook','--product-image',self.product,'--duration','8','--project-dir',project]
+        self.run_cli(script,*command,ok=False,approve=False)
+        review=project/'storyboard.credits.json';mcp.approve_credits(review,'同意5积分')
+        Image.new('RGB',(384,384),'purple').save(self.product)
+        self.run_cli(script,*command,ok=False,approve=False)
+        self.assertNotIn('approval',json.loads(review.read_text()))
+        self.assertEqual(len(self.server()['tasks']),0)
 
     def test_missing_binding_fails_before_submission(self):
         result=self.image(ok=False)
@@ -264,7 +440,9 @@ class Workflows(unittest.TestCase):
         pack=self.root/'pack.json'
         pack.write_text(json.dumps({'screens':[{'screen_id':1,'final_prompt_en':'A faithful product image',
             'text_to_render':{'verbatim':True,'language':'English','headline':'Simple'},
-            'backend_params':{'aspect_ratio':'1:1','reference_images':[]},'assembly_plan':{'order':1}}]}))
+            'backend_params':{'aspect_ratio':'1:1','reference_images':[]},'assembly_plan':{'order':1}},
+            {'screen_id':2,'final_prompt_en':'Product details','text_to_render':{'verbatim':True,'headline':'Details'},
+             'backend_params':{'aspect_ratio':'1:1','reference_images':[]},'assembly_plan':{'order':2}}]}))
         scripts='product-detail-page-pipeline/scripts/'
         output=self.root/'detail';review=self.root/'review';approval=review/'approval.json'
         self.run_cli(scripts+'run_image_generation.py','--prompt-pack',pack,'--output-dir',output,ok=False)
@@ -272,8 +450,13 @@ class Workflows(unittest.TestCase):
         self.run_cli(scripts+'prepare_generation_review.py','--prompt-pack',pack,'--output-dir',review)
         self.run_cli(scripts+'record_generation_approval.py','--prompt-pack',pack,'--review',review/'generation_review.json',
             '--output',approval,'--confirmation','开始生图')
-        self.run_cli(scripts+'run_image_generation.py','--prompt-pack',pack,'--output-dir',output,'--approval-file',approval)
-        self.assertEqual(len(self.server()['tasks']),1)
+        command=['--prompt-pack',pack,'--output-dir',output,'--approval-file',approval,'--skip-backend-check']
+        blocked=self.run_cli(scripts+'run_image_generation.py',*command,ok=False,approve=False)
+        self.assertIn('大约需要消耗 10 积分',blocked.stderr)
+        self.assertEqual(len(self.server()['tasks']),0)
+        mcp.approve_credits(output/'generation.credits.json','同意所选两页大约10积分')
+        self.run_cli(scripts+'run_image_generation.py',*command,approve=False)
+        self.assertEqual(len(self.server()['tasks']),2)
         self.assertTrue((output/'images/screen_01.png').is_file())
         self.assertTrue((output/'images/screen_01.png.original').is_file())
 

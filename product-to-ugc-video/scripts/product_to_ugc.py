@@ -27,7 +27,7 @@ SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from aicreative_mcp import Client, MCPError, model_default, validate
+from aicreative_mcp import Client, MCPError, model_default, validate, prepare_credit_commands
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_IMAGE_MODEL = model_default("image")
@@ -410,6 +410,8 @@ def build_image_edit_command(
         cmd.extend(["--ratio", args.aspect_ratio])
     for image_path in reference_images:
         cmd.extend(["--image", str(image_path)])
+    if getattr(args, "credit_review", None):
+        cmd.extend(["--credit-review", str(args.credit_review)])
     return cmd
 
 
@@ -423,7 +425,7 @@ def build_video_command(
     json_path: pathlib.Path,
     prompt_path: pathlib.Path,
 ) -> list[str]:
-    return [
+    cmd = [
         sys.executable, str(pathlib.Path(__file__).parent / "generate_video.py"),
         "--model", model_name, "--prompt-file", str(prompt_path),
         "--duration", str(segment.get("duration_seconds", args.segment_duration)),
@@ -433,6 +435,44 @@ def build_video_command(
         "--poll-interval", str(args.poll_interval), "--max-polls", str(args.max_polls),
         "--download-timeout", str(args.video_timeout),
     ]
+    if getattr(args, "credit_review", None):
+        cmd.extend(["--credit-review", str(args.credit_review)])
+    return cmd
+
+
+def prepare_project_credits(args, plan, paths, product, character):
+    """Quote the entire dependency chain before creating its first paid asset."""
+    jobs = []
+    char_path = character or character_reference_output_path(paths)
+    prompt = paths["prompts"] / "character_reference.prompt.txt"
+    write_text(prompt, plan["character_reference_prompt"].strip()+"\n")
+    if not character and not args.skip_character_generation:
+        jobs.append(build_image_edit_command(args, args.image_model, prompt, char_path,
+                    paths["character_reference_json"] / "character_reference.json", [product]))
+    previous = None
+    frames = {}
+    for frame in plan["frames"]:
+        fid = frame["id"]
+        prompt = paths["prompts"] / "frames" / f"{fid}.prompt.txt"
+        write_text(prompt, frame["prompt"].strip()+"\n")
+        output = frame_output_path(paths, fid)
+        frames[fid] = output
+        if not args.skip_frame_generation:
+            refs = [product, char_path] + ([previous] if previous else [])
+            jobs.append(build_image_edit_command(args, args.image_model, prompt, output,
+                        paths["continuous_frames_json"] / f"{fid}.json", refs))
+        previous = output
+    if not args.skip_video_generation:
+        for segment in plan["segments"]:
+            sid = segment["id"]
+            prompt = paths["prompts"] / "segments" / f"{sid}.prompt.txt"
+            write_text(prompt, segment["video_prompt"].strip()+"\n")
+            jobs.append(build_video_command(args, args.video_model, segment,
+                        frames[segment["from_frame"]], frames[segment["to_frame"]],
+                        segment_output_path(paths, sid), paths["video_json"] / f"{sid}.json", prompt))
+    review = paths["root"] / "generation.credits.json"
+    prepare_credit_commands(jobs, review)
+    args.credit_review = review
 
 
 def ffmpeg_available() -> bool:
@@ -548,6 +588,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.planner_only:
         return 0
+
+    if not args.dry_run:
+        prepare_project_credits(args, plan, paths, copied_product, copied_character_input)
 
     command_log: list[dict[str, Any]] = []
 
@@ -747,4 +790,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except MCPError as exc:
+        raise SystemExit(str(exc)) from None
