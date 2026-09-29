@@ -11,7 +11,6 @@ import shutil
 ROOT = Path(__file__).resolve().parents[1]
 AI_SKILLS = (
     "product-creative-scraper",
-    "open-tiktok-script",
 )
 VIDEO_SKILLS = ("script-to-storyboard-video", "product-to-ugc-video")
 IMAGE_SKILLS = (*VIDEO_SKILLS, "product-detail-page-pipeline", "standard-product-image")

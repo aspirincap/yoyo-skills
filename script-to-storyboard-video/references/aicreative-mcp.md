@@ -1,6 +1,6 @@
 # AI Creative MCP branch
 
-This branch routes `standard-product-image`, `product-detail-page-pipeline`, `script-to-storyboard-video` and `product-to-ugc-video` through AI Creative MCP. It does not call NewAPI, OpenAI image endpoints or Gemini generation endpoints. The other skills keep their original backends.
+This branch routes `standard-product-image`, `product-detail-page-pipeline`, `script-to-storyboard-video` and `product-to-ugc-video` through AI Creative MCP. It does not call NewAPI, OpenAI image endpoints or Gemini generation endpoints. `open-tiktok-script` separately uses the SpotMax `describe_video` HTTP API; see its own README for local-test versus production authentication. The remaining skills keep their original backends.
 
 ## Setup
 

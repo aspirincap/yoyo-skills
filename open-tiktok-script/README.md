@@ -13,7 +13,7 @@
 - TikTok、TikTok Shop、Spark Ads 与 Paid In-Feed 输出类型；
 - 英文 creator-native 口语、平台内 CTA 和创作者 Brief；
 - 西方语境保护群体、身体焦虑、健康与广告声明安全审校；
-- 公共 TikTok 下载、可配置 Gemini-compatible 视频分析；
+- 公共 TikTok 下载、可配置 describe_video 视频分析；
 - 原创合成英文示例和待真实数据验证的创意公式库。
 
 完整署名见 [`NOTICE.md`](./NOTICE.md)。
@@ -25,7 +25,7 @@
 ## 功能
 
 - 下载并整理最多 5 个公共 TikTok 对标视频；
-- 用 Gemini-compatible endpoint 做钩子、分镜、节奏、转化和风险分析；
+- 用 describe_video 接口做钩子、分镜、节奏、转化和风险分析；
 - 提炼可复用机制，并区分可复制结构与受保护表达；
 - 生成 Organic、TikTok Shop、Spark Ads、Paid In-Feed 和 Creator Brief；
 - 检查广告声明、版权、文化语境及保护群体风险。
@@ -35,41 +35,48 @@
 - Python 3.10+
 - [`uv`](https://docs.astral.sh/uv/)
 - [`yt-dlp`](https://github.com/yt-dlp/yt-dlp)，仅下载公共 TikTok 视频时需要
-- 用户配置的 Gemini-compatible 视频分析服务
+- 可访问的视频分析服务，默认 `https://agentapi.spotmaxtech.com`
+- `ffmpeg` / `ffprobe`，仅本地截取片段时需要
 
-推荐一次配置任意 NewAPI-compatible 网关：
+## 配置
 
-```bash
-python3 scripts/configure_ai_gateway.py
-```
+复制 `.env.example` 为本 skill 目录的 `.env` 或设置环境变量（环境变量优先）：
 
-配置保存在 `~/.config/ai-gateway/config.env`，供多个 Skill 共享。核心变量为 `AI_GATEWAY_BASE_URL`、`AI_GATEWAY_API_KEY` 和 `AI_VISION_MODEL`。未配置统一网关时仍可回退 Google Gemini API；旧的 `GEMINI_VIDEO_*` 变量继续兼容。不要把真实凭据提交到版本库。
+- `VIDEO_ANALYSIS_BASE_URL`：服务根地址，默认 `https://agentapi.spotmaxtech.com`。
+- `VIDEO_ANALYSIS_ENV`：默认 `production`，不发送 `X-API-Key`；本地测试显式改为 `local`。
+- `VIDEO_ANALYSIS_API_KEY`：仅本地测试使用，不写入仓库或命令示例。线上即使残留该变量也不会发送。
+
+不再读取旧 AI_GATEWAY / GEMINI 配置，也不回退 Google API。运行器使用 Python 标准库，无新增 Python 依赖。
 
 ## 数据与隐私边界
 
-- 视频分析会把本地视频以 `inlineData` 发送到用户配置的外部 provider；第一次发送前必须说明目标域名并取得用户同意。
+- 视频文件或媒体 URL 会发送至配置的分析服务；首次发送前说明目标域名并取得用户授权，当前会话已有授权时不重复询问。
 - 不上传含机密、敏感个人信息或未授权人物的视频。
 - 默认只下载公开 TikTok 视频。
 - 只有用户明确同意时才使用其浏览器 Cookie；不得绕过私密、年龄或地域限制。
 - 只分析用户有权访问和使用的内容，遵守 TikTok 条款与当地法律；下载的视频仅用于获准的分析，不随交付物再分发。
-- 自定义 Gemini-compatible 网关可使用 HTTP 或 HTTPS；使用 HTTPS 时沿用系统默认的证书校验，不内置全局跳过校验参数。
+- 使用 HTTPS 和系统证书校验；仅本机 loopback 测试允许 HTTP。接口重定向被拒绝，测试 Key 不会跟随跳转。
 - 代理地址不会写入结果或日志。
 
 ## 快速开始
 
 ```bash
-python3 scripts/configure_ai_gateway.py
 uv run scripts/download_tiktok.py \
   --urls "https://www.tiktok.com/@creator/video/123" \
   --output-dir _temp/tiktok-downloads
 
-uv run scripts/analyze_video.py \
+python3 scripts/analyze_video.py \
   --video _temp/tiktok-downloads/tiktok-1-123.mp4 \
-  --prompt-file analysis-prompt.md \
-  --model flash \
-  --resolution medium \
+  --prompt-file references/video-analysis-prompt.md \
+  --profile tiktok \
   --output _temp/tiktok-downloads/analysis-1.md
 ```
+
+已有媒体直链可改用 `--video-url https://your-media-host.example/video.mp4`（不与 `--video` 同传）。本地测试增加 `--environment local` 并通过环境或 `.env` 配置测试 Key。生产环境不发送该头，是否需要服务侧会话/网络上下文由实际部署决定。
+
+本地截取支持 `--start 2 --end 8`，或 `--start-offset 2s --end-offset 8s`；截取会保留音频，分析时间轴相对片段。旧 `--model`、`--resolution`、`--media-resolution`、`--fps` 和 Gemini 认证/inline 参数均不支持，不会静默忽略。
+
+默认同时保存正文、`<output>.response.json` 和 `<output>.run.json`（请求 ID、用量及完整耗时）。可用 `--response-json` / `--metadata-json` 自定义诊断路径。`--raw-response` 将主输出改为 JSON，仅用于调试；`--dry-run` 不联网。八维缺失、异常长空白或空正文会拒绝作为成功结果；结构通过后仍需核对事实、口播与时间轴。超时不自动重试，已有正文在失败时保留。
 
 如果用户没有竞品视频，可以跳过下载和视频分析，直接用 `references/proven-formulas.md` 作为首轮创意假设。它不是效果保证，后续应使用真实竞品证据或投放数据验证。
 
@@ -77,13 +84,14 @@ uv run scripts/analyze_video.py \
 
 ```bash
 python3 tests/test_smoke.py
+python3 -m unittest discover -s tests -p test_analyze_video.py -v
 ```
 
 ## 发布前检查
 
 - [x] 已确认取得公开发布本改编项目的授权，并保留来源署名；
 - [ ] 未包含 `.env`、Cookie、视频文件、分析产物或缓存；
-- [ ] 默认 provider、模型和认证方式在文档中清晰可替换；
+- [ ] 服务地址及本地/线上认证模式在文档中清晰可配置；
 - [ ] 合成脚本示例没有被描述成真实创作者逐字稿；
 - [ ] 公式被描述为待验证假设，而非保证效果的“爆款公式”；
 - [ ] 离线测试和安全扫描通过。

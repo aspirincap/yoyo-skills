@@ -38,14 +38,9 @@ def main() -> int:
     assert "--cookies-from-browser" not in command
     assert "--proxy" in command
 
-    headers = analyzer.auth_headers("secret", "x-goog")
-    assert headers["x-goog-api-key"] == "secret"
-    assert "Authorization" not in headers
-    assert analyzer.normalize_model("flash") == "gemini-2.5-flash"
-    assert analyzer.is_placeholder_value("replace_with_your_key")
-    assert analyzer.is_placeholder_value("placeholder")
-    assert not analyzer.is_placeholder_value("configured-value")
-    assert "AI_GATEWAY_API_KEY" in analyzer.API_KEY_ENV_VARS
+    assert analyzer.auth_headers("production", {"VIDEO_ANALYSIS_API_KEY": "secret"}) == {}
+    assert analyzer.auth_headers("local", {"VIDEO_ANALYSIS_API_KEY": "secret"}) == {"X-API-Key": "secret"}
+    assert analyzer.extract_text({"result": "Analysis"}) == "Analysis"
 
     skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -57,7 +52,8 @@ def main() -> int:
     assert ".env" in gitignore
     assert "https://llm-api.mobvista.com" not in skill + readme
     assert "gemini-3.5-flash" not in skill + readme
-    assert "configure_ai_gateway.py" in skill + readme
+    assert "VIDEO_ANALYSIS_ENV" in skill + readme
+    assert (ROOT / "references/video-analysis-prompt.md").is_file()
 
     for script in ("download_tiktok.py", "analyze_video.py"):
         result = subprocess.run(

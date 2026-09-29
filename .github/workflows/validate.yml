@@ -33,6 +33,8 @@ jobs:
         run: python3 research-serp-keywords/tests/test_smoke.py
       - name: Test open-tiktok-script
         run: python3 open-tiktok-script/tests/test_smoke.py
+      - name: Test describe_video adapter
+        run: python3 -m unittest discover -s open-tiktok-script/tests -p "test_analyze_video.py" -v
       - name: Test digital-human-video
         run: npm --prefix digital-human-video test
       - name: Check digital-human-video JavaScript

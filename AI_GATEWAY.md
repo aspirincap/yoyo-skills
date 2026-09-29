@@ -43,7 +43,7 @@ The base URL may use HTTP or HTTPS. HTTPS uses the system's default certificate 
 ## Supported skills
 
 - `product-creative-scraper`: vision model through `/v1/chat/completions`
-- `open-tiktok-script`: vision/video understanding through `/v1beta/models/{model}:generateContent`
+- `open-tiktok-script` has migrated to the SpotMax `describe_video` API and no longer reads this gateway configuration; see [its README](open-tiktok-script/README.md).
 
 The four generation skills on this branch use [AI Creative MCP](AICREATIVE_MCP.md): `standard-product-image`, `product-detail-page-pipeline`, `script-to-storyboard-video` and `product-to-ugc-video`. They do not read `AI_GATEWAY_*` or use the setup above.
 

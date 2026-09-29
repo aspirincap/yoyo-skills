@@ -67,7 +67,7 @@ git clone https://github.com/aspirincap/yoyo-skills.git ~/.codex/skills/
 
 本分支的 `standard-product-image`、`product-detail-page-pipeline`、`script-to-storyboard-video`、`product-to-ugc-video` 使用 **AI Creative MCP**，不再使用 AI 网关。支持复用 Codex MCP 配置、素材绑定、任务幂等和断点恢复；UGC 规划由 Agent 提供计划文件或使用本地规则。安装与使用见 [AICREATIVE_MCP.md](./AICREATIVE_MCP.md)。
 
-`product-creative-scraper` 和 `open-tiktok-script` 的图片/视频理解仍使用原 AI 网关，配置见 [AI_GATEWAY.md](./AI_GATEWAY.md)。
+`open-tiktok-script` 的视频分析改用 `https://agentapi.spotmaxtech.com/api/v1/describe_video`，支持本地文件与媒体直链；本地测试发送 `X-API-Key`，线上模式不发送。配置见 [使用说明](./open-tiktok-script/README.md)。`product-creative-scraper` 的图片理解仍使用原 [AI 网关](./AI_GATEWAY.md)。
 
 ---
 
@@ -171,7 +171,7 @@ pip install openpyxl Pillow requests
 
 > *"不是把中文带货话术翻成英文——而是从公开竞品证据中提炼机制，写成创作者真的会说、品牌可以投放的 TikTok 内容。"*
 
-收集最多 5 个公共 TikTok 对标视频，用可配置的 Gemini-compatible 服务拆解钩子、节奏、演示和转化机制，再生成原创的 Organic、TikTok Shop、Spark Ads、Paid In-Feed 脚本、分镜与 Creator Brief。
+收集最多 5 个公共 TikTok 对标视频，用 describe_video 接口拆解钩子、节奏、演示和转化机制，再生成原创的 Organic、TikTok Shop、Spark Ads、Paid In-Feed 脚本、分镜与 Creator Brief。
 
 **核心能力**
 
@@ -179,7 +179,7 @@ pip install openpyxl Pillow requests
 - **Creator-native 写作**：生成自然英文口语，避免电视购物式硬广和中文话术直译
 - **多种投放格式**：支持 Organic、TikTok Shop、Spark Ads、Paid In-Feed 与 Creator Brief
 - **安全审校**：检查广告声明、版权、身体焦虑、保护群体与文化语境风险
-- **可配置视频分析**：默认 Google Gemini，也可使用 HTTP/HTTPS Gemini-compatible 网关
+- **可配置视频分析**：支持本地文件上传与 HTTPS 媒体直链，提供八维分析完整性检查
 
 **灵感与署名**
 

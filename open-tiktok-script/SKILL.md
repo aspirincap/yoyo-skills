@@ -1,7 +1,7 @@
 ---
 name: open-tiktok-script
 description: |
-  TikTok短视频与TikTok Shop带货脚本创作工作流。从竞品TikTok视频拆解到脚本、分镜、Creator Brief和投放素材生成：TikTok链接/本地视频收集→Gemini视频分析→TikTok-native创意机制提炼→脚本+分镜生成→西方语境安全审校。
+  TikTok短视频与TikTok Shop带货脚本创作工作流。从竞品TikTok视频拆解到脚本、分镜、Creator Brief和投放素材生成：TikTok链接/本地视频收集→视频分析接口→TikTok-native创意机制提炼→脚本+分镜生成→西方语境安全审校。
   当用户提到"TikTok脚本"、"TikTok Shop"、"Spark Ads"、"TikTok素材"、"UGC脚本"、"海外短视频带货"、"竞品TikTok拆解"、"TikTok视频分析"、"短视频广告脚本"时使用此技能。
 ---
 
@@ -31,17 +31,15 @@ TikTok脚本优先追求 creator-native：
 - Python 3.10+
 - `uv`（Python包管理器）
 - `yt-dlp`（TikTok视频下载，需 `pip install yt-dlp` 或 `brew install yt-dlp`）
-- Gemini视频分析使用用户配置的 NewAPI-compatible/Gemini-compatible endpoint：
-  - 首选运行 `python3 scripts/configure_ai_gateway.py`，一次写入 `~/.config/ai-gateway/config.env`
-  - `AI_GATEWAY_BASE_URL`：网关根地址；未配置时回退 Google Gemini API
-  - `AI_GATEWAY_API_KEY`：统一模型 API Token
-  - `AI_VISION_MODEL`：视频理解模型；默认 `gemini-2.5-flash`
-  - 默认 endpoint：`/v1beta/models/gemini-2.5-flash:generateContent`
-  - 读取优先级：shell 环境、`SKILL_DIR/.env`、共享全局配置、默认值
-  - 旧的 `GEMINI_VIDEO_*`、`GEMINI_API_KEY`、`GOOGLE_API_KEY`、`NEWAPI_API_KEY` 继续兼容
+- 视频分析通过 `POST https://agentapi.spotmaxtech.com/api/v1/describe_video`；运行器仅使用 Python 标准库。
+  - `VIDEO_ANALYSIS_BASE_URL` 可替换服务根地址。
+  - `VIDEO_ANALYSIS_ENV=production` 为默认值，线上不发送 `X-API-Key`。
+  - 本地测试显式设置 `VIDEO_ANALYSIS_ENV=local`，从 `VIDEO_ANALYSIS_API_KEY` 读取测试 Key。
+  - 配置读取优先级：shell 环境、`SKILL_DIR/.env`、默认值。不读取 AI 网关、Gemini 或 MCP 的认证配置。
+- 可选：`ffmpeg` 和 `ffprobe`，只在本地视频截取时需要。
 - 可选：用户明确同意后，使用其 Chrome/Edge/Firefox TikTok 会话 Cookie。不得自动读取浏览器 Cookie，也不得绕过私密、年龄或地域访问限制。仅分析用户有权访问和使用的内容，下载视频不得随交付物再分发。
 
-视频分析会把本地视频发送到用户配置的外部 Gemini-compatible provider。第一次上传前说明目标域名并取得用户同意；不要上传含敏感个人信息、未授权人物或机密素材的视频。
+视频分析会将视频文件或媒体直链发送到配置的分析服务。首次发送前说明目标域名并取得用户同意；本会话已经授权该服务与素材时沿用授权，不重复询问。仅发送用户授权用于分析的素材。
 
 **路径约定**：下文中 `SKILL_DIR` 指本 `SKILL.md` 所在目录的绝对路径。运行脚本前，先用 `dirname` 或 Glob 工具确定 `SKILL.md` 的实际位置，替换 `SKILL_DIR`。
 
@@ -91,79 +89,29 @@ uv run SKILL_DIR/scripts/download_tiktok.py \
 
 ---
 
-### Step 3: Gemini视频分析（可并行）
+### Step 3: 视频分析
 
-对每个下载成功的视频，在用户同意后调用 Gemini 视频分析。此脚本只支持本地视频文件，通过用户配置的 Gemini-compatible endpoint 发送 `inlineData` base64；不支持 YouTube URL、远程 URL、`fileData.fileUri` 或 Gemini File API。
+读取 [视频分析提示词](references/video-analysis-prompt.md)，使用完整八维提示词和 `--profile tiktok`。按本地文件或媒体直链选择一个输入：
 
 ```bash
-uv run SKILL_DIR/scripts/analyze_video.py \
+python3 SKILL_DIR/scripts/analyze_video.py \
   --video "_temp/tiktok-downloads/tiktok-1-xxx.mp4" \
-  --prompt "PROMPT_BELOW" \
-  --model flash \
-  --resolution medium \
+  --prompt-file "SKILL_DIR/references/video-analysis-prompt.md" \
+  --profile tiktok \
   --output "_temp/tiktok-downloads/analysis-1.md"
 ```
 
-**使用 flash 模型 + medium 分辨率**：`--model flash` 默认映射到 `gemini-2.5-flash`，短视频通常足够；实际可用模型和价格由用户的 provider 决定。
+已有可访问的 HTTPS 视频直链时，将 `--video` 替换为 `--video-url "HTTPS_MEDIA_URL"`。TikTok 分享页不是媒体直链，仍须先下载。本地测试增加 `--environment local` 并配置测试 Key；线上使用默认 `production` 模式，不发送 `X-API-Key`。
 
-**Key 与 Base URL**：
-- 默认读取 `AI_GATEWAY_API_KEY`、`AI_GATEWAY_BASE_URL` 和 `AI_VISION_MODEL`。
-- 统一网关默认使用 Bearer；未配置统一网关而回退 Google Gemini 时默认使用 `x-goog-api-key`。
-- 兼容旧变量与 `--auth-mode x-goog|bearer|both` 覆盖。
+**响应与质量**：同步 JSON 的 `result` 是正文。脚本保存 Markdown、`<output>.response.json` 原始响应及 `<output>.run.json` 耗时/用量记录。空结果、异常长空白、缺少八维标题或接口错误返回失败，保留诊断文件，不写入成功正文。不得将失败响应用作分析证据。
 
-**文件大小**：默认 inline payload 安全限制为 20MB。超过时先剪短、压缩或拆分视频，不切换到 File API。
+提示词采用紧凑列表，避免服务实测出现的表格空白膨胀。结构校验不代表事实正确：检查画面顺序和时点，区分音乐歌词与创作者口播；不可辨认的内容标注不确定，不把模型推测当作观察事实。
 
-**多个视频可并行分析**。
+**参数与恢复**：新接口不提供客户端模型、分辨率或采样 fps 控制，旧参数会明确报错。可对本地文件使用 `--start 2 --end 8`（或 `--start-offset 2s --end-offset 8s`）先截取，时间轴相对片段，原片偏移保存在运行记录。文件通过流式 multipart 上传，不沿用旧 inline 的 20MB 限制；服务的完整大小/时长上限未公布。
 
-**TikTok分析Prompt**：
+多个视频逐条分析。服务并发限制尚未确认，不默认批量并发。POST 没有已知幂等协议，超时不自动重试；先检查已保存的运行记录和服务状态，避免重复提交。需要重做时只处理失败项。`--dry-run` 可离线检查请求类型和配置，不发送视频或读取测试 Key 用于认证。
 
-```text
-作为资深TikTok创意策略师和跨文化短视频编导，请对这个视频进行8维度深度拆解。
-请用中文输出，但保留视频中的英文原句、字幕和口播表达。
-
-## 1. 前2秒钩子分析
-- 第一帧：画面主体、构图、字幕、动作、情绪
-- 文案钩子：完整转录开头口播/字幕
-- 视觉钩子：动作冲击、before/after、POV、反差、文字弹出、产品奇观、情绪表情
-- 为什么适合TikTok：是否像真实创作者内容，是否有scroll-stopping信号
-- 钩子强度评分（1-10）及理由
-
-## 2. Creator人设与信任来源
-- 创作者像谁：普通用户、专家、妈妈、健身人群、美妆达人、学生、办公室人群等
-- 信任来自哪里：个人体验、演示证据、专业背景、评论区反馈、社交证明
-- 是否有明显广告腔
-
-## 3. 分镜结构
-用表格拆解每个镜头：
-| 时间 | 景别 | 画面内容 | 口播/字幕 | 转场/剪辑 |
-
-## 4. 节奏与留存
-- 每个剪辑点大概间隔
-- 是否每3-5秒有信息变化
-- BGM、音效、停顿、表情和字幕是否配合
-- 是否适合15秒/30秒版本二次剪辑
-
-## 5. TikTok-native表达
-- 口语、梗、评论区感、POV、duet/stitch感、真实测评感
-- 字幕样式、屏幕文字密度、emoji/符号使用
-- 是否像平台内容，而不是品牌广告片
-
-## 6. 转化设计
-- CTA出现时机
-- TikTok Shop商品卡/橱窗/链接/评论区引导方式
-- 价格锚定、赠品、优惠、对比演示
-- 从观看到购买的路径是否自然
-
-## 7. 西方语境安全检查
-- 是否触碰保护群体：残疾、种族/族裔、肤色、国籍、宗教、性别、性别认同、性取向、年龄、身材、疾病/健康状态
-- 是否包含身体羞辱、性别/种族刻板印象、残障歧视、嘲讽口音或文化挪用
-- 是否把用户的敏感身份当作问题、缺陷或恐惧来营销
-- 如有风险，给出自然、不扫兴的替代表达
-
-## 8. 可复制要素
-- 可复制的钩子句式、分镜结构、镜头动作、字幕节奏、CTA
-- 不可复制的元素：特定创作者人格、不可验证声明、受版权保护音乐/素材、容易冒犯的文化梗
-```
+接口当前返回 token 用量，没有积分报价字段。若部署方对视频分析扣积分，应按其已确认计价规则先告知预估并取得用户同意；不能将 token 数或其他生成模型的 minPoints 当作本接口积分。
 
 ---
 
@@ -390,7 +338,8 @@ _temp/tiktok-downloads/
 | 创意公式参考 | `references/proven-formulas.md` | 待真实证据验证的品类创意假设 |
 | 原创合成样本 | `references/script-style-samples.md` | 非平台逐字稿的 few-shot 风格范例 |
 | 视频下载脚本 | `scripts/download_tiktok.py` | TikTok视频下载（yt-dlp） |
-| Gemini视频分析 | `scripts/analyze_video.py` | 使用用户配置的 Gemini-compatible endpoint 对本地视频做理解和拆解 |
+| 视频分析接口 | `scripts/analyze_video.py` | 通过 describe_video 分析本地视频或媒体直链 |
+| 八维分析提示词 | `references/video-analysis-prompt.md` | 完整分析要求及紧凑输出约束 |
 
 ## 快速使用
 
